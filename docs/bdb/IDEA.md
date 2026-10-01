@@ -42,7 +42,10 @@ So the panel mixes AO task progress per project with per-endpoint usage quotas f
 ## Constraints
 - Keep upstream MIT license and attribution. Upstream remote is `upstream`; sync regularly.
 - GitHub repo must be private (a GitHub fork of a public repo cannot be private, so push as a fresh private repo).
-- BDB CI: black #0a0a0a, white, accent purple #9b30c4; no mint/cyan.
+- Colours (decided 2026-10-01): the old purple BDB CI is dropped for Codenotch. The new CI for BDB AOS/AO cloud products is the light green-beige of the AOS Store UI (`lib/store-ui/index.html` in bdb-dev-optimized-agent-skills): `--paper oklch(0.97 0.012 95)`, `--paper-2 oklch(0.93 0.018 95)`, `--green oklch(0.72 0.17 145)`, `--green-deep oklch(0.40 0.12 145)`, ink `oklch(0.18 0.025 265)`. Green for done / merge-ready is fine.
+- Upstream sync is by merge (not rebase). BDB features are off by default.
+- Builds run in GitHub Actions (`.github/workflows/bdb-build.yml`); no local Xcode.
+- Keep-awake modes: auto (while an agent is working), always on, timer (duration or until a time).
 - Reference mockup: `docs/bdb/mockup-sidebar-2026-10-01.png` (the second screenshot from the notes is irrelevant).
 
 ## Source

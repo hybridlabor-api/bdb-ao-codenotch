@@ -61,3 +61,7 @@ The Makefile also exports `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Develo
 ## Windows port (not attempted here)
 
 `windows/` is Rust/Tauri 2 (`cargo test --locked`, `node --test test-codex-headline.cjs` per windows/README.md). cargo is installed on this Mac, but the crate targets Windows/WebView2 (a `tauri.linux.conf.json` and `scripts/run-linux.sh` exist; macOS not documented), so a Windows build is not verifiable on this machine. UNVERIFIED whether `cargo test` runs on macOS.
+
+## Decision 2026-10-01: build in CI
+
+No local Xcode install. `.github/workflows/bdb-build.yml` runs `make test-ci` and `make build-ci` on `macos-26` (xcodegen via brew), uploads `Codenotch-adhoc.zip`, and builds/tests `windows/` on `windows-latest`. Not yet run: a first run needs the repo pushed to the private origin and Actions enabled. Check in its log: the Xcode version on the runner, `brew install xcodegen` success, and `make test-ci` results.

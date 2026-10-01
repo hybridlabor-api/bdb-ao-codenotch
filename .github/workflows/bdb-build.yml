@@ -1,0 +1,88 @@
+name: BDB Build
+
+# BDB fork only. Upstream's ci/package/windows workflows are guarded by
+# `github.repository == 'vinzdg/codenotch'` and stay skipped here; this file is
+# the fork's build. No secrets, ad-hoc signing, no notarisation, no release.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bdb-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  macos:
+    if: github.repository != 'vinzdg/codenotch'
+    name: macOS build and test
+    # Same image upstream uses: the project (objectVersion 77, macOS 26 APIs)
+    # needs its Xcode.
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          xcrun --show-sdk-version
+          swift --version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Unit tests (unsigned)
+        run: make test-ci
+
+      - name: Build app (ad-hoc signed)
+        run: make build-ci
+
+      - name: Zip app
+        run: ditto -c -k --keepParent build/ci/DerivedData/Build/Products/Release/Codenotch.app Codenotch-adhoc.zip
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Codenotch-macOS-adhoc
+          path: Codenotch-adhoc.zip
+          if-no-files-found: error
+
+  windows:
+    if: github.repository != 'vinzdg/codenotch'
+    name: Windows build and test
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: windows
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Check the UI pages parse
+        run: node scripts/check-ui-scripts.mjs
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: windows
+
+      - name: Build
+        run: cargo build --locked
+
+      - name: Test
+        run: cargo test --locked
+
+      - name: Test Codex headline selection
+        run: node --test test-codex-headline.cjs
+
+      - name: Upload debug binary
+        uses: actions/upload-artifact@v7
+        with:
+          name: Codenotch-windows-debug
+          path: |
+            windows/target/debug/codenotch.exe
+            windows/target/debug/codenotch-hook.exe
+          if-no-files-found: warn

@@ -22,7 +22,12 @@ final class NotchViewModel: ObservableObject {
     func updateSnapshots(_ providerSnapshots: [ProviderSnapshot]) {
         let hoveredID = hoveredSnapshot?.id
         let next = ProviderOrder.cells(from: providerSnapshots, keeping: snapshots).map(decorated).map(Costs.decorate)
-        let nextHoveredIndex = hoveredID.flatMap { id in next.firstIndex { $0.id == id } }
+        var nextHoveredIndex = hoveredID.flatMap { id in next.firstIndex { $0.id == id } }
+        // Screenshot aid: `defaults write <bundle> bdb.debugHoverID <provider id>`
+        // holds that card open without a pointer.
+        if nextHoveredIndex == nil, let debugID = UserDefaults.standard.string(forKey: "bdb.debugHoverID") {
+            nextHoveredIndex = next.firstIndex { $0.id == debugID }
+        }
         if hoveredIndex != nextHoveredIndex { hoveredIndex = nextHoveredIndex }
         snapshots = next
     }

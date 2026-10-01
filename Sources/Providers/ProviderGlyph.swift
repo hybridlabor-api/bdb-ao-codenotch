@@ -41,6 +41,7 @@ enum ProviderGlyph: String, Codable, Equatable {
     /// from the local Qwen model brand in `.qwen` — a ring wearing this one is
     /// the platform account, not a model.
     case qianwenAI = "qianwenai"
+    case bdb
 
     /// If an asset with this name is in the bundle it wins over the traced
     /// outline — drop a PDF/SVG export from Figma in and it is picked up.
@@ -79,6 +80,7 @@ enum ProviderGlyph: String, Codable, Equatable {
         case .minimax: return 0.95
         case .ollama: return 0.95
         case .third:  return 1.0
+        case .bdb:    return 1.0
         case .ollamaLocal: return 0.98
         case .lmstudio: return 0.96
         // The one value here measured off a render of the asset file rather
@@ -102,7 +104,7 @@ enum ProviderGlyph: String, Codable, Equatable {
         // glyph-kimi in the asset catalogue are drawn instead.
         case .glm:    return GlyphOutline.glm
         case .devin, .qwen, .gemma, .meta, .deepseek, .mistral, .lmstudio,
-             .qianwenAI, .amp, .apify: return []
+             .qianwenAI, .amp, .apify, .bdb: return []
         case .grok:   return GlyphOutline.grok
         case .opencode: return GlyphOutline.opencode
         case .commandcode: return GlyphOutline.commandcode

@@ -56,7 +56,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return L10n.t("Appearance")
         case .notifications: return L10n.t("Notifications")
         case .costs:         return L10n.t("Costs")
-        case .bdb:           return "BDB"
+        case .bdb:           return "BDB AOS CLOUD"
         case .general:       return L10n.t("General")
         }
     }
@@ -84,7 +84,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return L10n.t("How the notch looks and where it sits.")
         case .notifications: return L10n.t("What Codenotch tells you, and when.")
         case .costs:         return L10n.t("What each project spent of each login's allowance.")
-        case .bdb:           return "Keep agents awake, AOS/AO versions."
+        case .bdb:           return "Keep-awake for coding agents, AOS/AO versions."
         case .general:       return L10n.t("Startup, updates and everything else.")
         }
     }
@@ -119,7 +119,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return .indigo
         case .notifications: return .red
         case .costs:         return .mint
-        case .bdb:           return BDBPalette.greenDeep
+        case .bdb:           return .green
         case .general:       return .gray
         }
     }
@@ -737,7 +737,7 @@ struct SettingsView: View {
             CustomEndpointsSettingsView(preferences: preferences)
         case .appearance:    appearancePane
         case .notifications: notificationsPane
-        case .bdb:           BDBSettingsPane()
+        case .bdb:           BDBSettingsPane(preferences: preferences)
         case .general:       generalPane
         }
     }

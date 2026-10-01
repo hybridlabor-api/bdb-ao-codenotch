@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <path fill="#000" fill-rule="evenodd" d="M50,4C24.6,4,4,24.6,4,50s20.6,46,46,46s46-20.6,46-46S75.4,4,50,4ZM50,12c21,0,38,17,38,38S71,88,50,88S12,71,12,50S29,12,50,12ZM55,22L30,54h15l-5,24l27-34H52Z"/>
+</svg>

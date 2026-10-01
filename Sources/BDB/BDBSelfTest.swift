@@ -71,6 +71,19 @@ enum BDBSelfTest {
         check(!BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(5 * 3600)), "not due within 6 h")
         check(BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(6 * 3600)), "due after 6 h")
 
+        // Snapshot for the notch gauge and hover card
+        let acts = [BDBAgentActivity(agent: .claude, pid: 1, busy: true), BDBAgentActivity(agent: .claude, pid: 2, busy: false),
+                    BDBAgentActivity(agent: .opencode, pid: 3, busy: false)]
+        let st = BDBState(mode: .auto, holding: true, statusLine: "Awake: 1 agent busy", timerUntil: nil, graceEnds: nil,
+                          agents: BDBState.from(acts),
+                          versions: [BDBVersionRow(title: "AOS", installed: "4.12.1", latest: "4.13.2")])
+        let snap = BDBSnapshot.make(st)
+        check(snap.displayName == "BDB AOS CLOUD" && snap.headlineText == "1", "gauge label is the busy-agent count")
+        check(abs((snap.usedFraction ?? -1) - 1.0 / 3.0) < 1e-9, "ring arc is busy/running")
+        check(snap.windows.first { $0.id == "agent-claude" }?.detail == "2 running · 1 busy", "agent row text")
+        check(snap.windows.first { $0.id == "ver-AOS" }?.detail == "4.12.1 · 4.13.2 available", "version row text")
+        check(BDBSnapshot.make(BDBState()).headlineText == "0", "idle gauge shows 0")
+
         print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         return failures == 0 ? 0 : 1
     }

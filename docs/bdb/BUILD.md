@@ -126,3 +126,14 @@ Verified on this Mac (CLT only):
 - Panel shows `AOS 4.12.1 · update 4.13.2 available` (real registry data). AO row not shown (package not installed here).
 - Screenshots: `docs/bdb/screens/settings-bdb-pane.png`, `panel-grouped.png`, `panel-fake-claude-added.png`.
 - Note: the Bash tool sandbox hides other processes and blocks screen capture; process tests and screenshots ran through the computer-use script tool instead. Windows equivalent (P1/P2) is not implemented.
+
+## v3: BDB AOS CLOUD as a native notch provider (2026-10-01)
+
+The floating beige panel is gone. `BDBProvider` (`Sources/BDB/BDBProvider.swift`) is a normal `UsageProvider` (id `bdb-aos-cloud`, new glyph `.bdb`, asset `glyph-bdb`), so the stock notch gauge and the stock dark `TooltipCard` render it:
+- **Gauge**: bolt icon, ring arc = busy / running agents, label = number of busy agents.
+- **Hover card** (title "BDB AOS CLOUD-Nutzung" in German UI, the stock "<name> usage" pattern): "Keep awake · <mode>" bar row with status line (timer end / grace end as the reset time), "Agents busy" bar, boxed "Agents" rows (Claude Code, Antigravity (agy), OpenCode, Codex: running / busy) and boxed "Versions" rows (AOS, AO if installed).
+- **On/off**: "connected" in Settings > Accounts equals BDB on (`BDBHub.enabled` mirrors it); Settings > BDB AOS CLOUD has the same switch plus mode, timer and version controls. Off by default (not in the default-on family).
+- Upstream touch points added: `ProviderGlyph` (`.bdb`), `AppDelegate` (provider list, connected sink, `onChange` -> store refresh), `SettingsView` (BDB pane), `NotchViewModel` (debug hover hook `defaults write <bundle> bdb.debugHoverID bdb-aos-cloud` for screenshots; harmless when unset).
+- Self-test extended (gauge label, arc, row texts): ALL PASSED.
+- Screenshots: `docs/bdb/screens/v3-sidebar.png`, `v3-hover-card.png` (captured with the debug hover hook because synthetic pointer moves did not trigger the notch hover; a real pointer hover was not tested). The Settings pane screenshot from v2 was removed because the pane changed; not re-captured.
+- Not done: Windows; the glyph is a simple bolt-in-circle placeholder.

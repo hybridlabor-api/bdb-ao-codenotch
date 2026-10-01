@@ -23,9 +23,21 @@ final class BDBPowerAssertion {
 }
 
 struct BDBVersionRow: Identifiable, Equatable {
-    let id: String
-    let text: String
-    let updateAvailable: Bool
+    let title: String
+    let installed: String?
+    let latest: String?
+    var id: String { title }
+    var updateAvailable: Bool {
+        guard let installed, let latest else { return false }
+        return BDBVersionLogic.isNewer(latest, than: installed)
+    }
+    var text: String { BDBVersionLogic.line(name: title, installed: installed, latest: latest) }
+    /// What follows the title in the hover card.
+    var detail: String {
+        guard let installed else { return "not installed" }
+        if updateAvailable, let latest { return "\(installed) · \(latest) available" }
+        return installed + (latest == nil ? "" : " · up to date")
+    }
 }
 
 /// Everything BDB-specific that runs in the app. Off until the user enables
@@ -35,11 +47,9 @@ final class BDBHub: ObservableObject {
     static let shared = BDBHub()
 
     private enum Key {
-        static let enabled = "bdb.enabled"
         static let mode = "bdb.keepAwake.mode"
         static let base = "bdb.keepAwake.base"
         static let until = "bdb.keepAwake.until"
-        static let panel = "bdb.panel"
         static let latest = "bdb.versions.latest."
         static let fetched = "bdb.versions.fetched"
     }
@@ -52,19 +62,25 @@ final class BDBHub: ObservableObject {
     private var lastBusy: Date?
     private var fetching = false
 
-    @Published var enabled: Bool { didSet { defaults.set(enabled, forKey: Key.enabled); apply() } }
-    @Published var showPanel: Bool { didSet { defaults.set(showPanel, forKey: Key.panel); BDBPanelController.shared.update() } }
+    /// Mirrors "connected" for the BDB AOS CLOUD entry in Accounts; set from
+    /// the app delegate, never persisted here.
+    @Published var enabled = false { didSet { if enabled != oldValue { apply() } } }
+    /// Called whenever what the notch shows has changed.
+    var onChange: (() -> Void)?
     @Published private(set) var mode: BDBKeepAwakeMode
     @Published private(set) var timerUntil: Date?
     @Published private(set) var activities: [BDBAgentActivity] = []
     @Published private(set) var holding = false
     @Published private(set) var versionRows: [BDBVersionRow] = []
 
+    var state: BDBState {
+        BDBState(mode: mode, holding: holding, statusLine: statusLine, timerUntil: timerUntil,
+                 graceEnds: graceEnds, agents: BDBState.from(activities), versions: versionRows)
+    }
+
     var busyCount: Int { activities.filter(\.busy).count }
 
     private init() {
-        enabled = defaults.bool(forKey: Key.enabled)
-        showPanel = defaults.object(forKey: Key.panel) as? Bool ?? true
         mode = BDBKeepAwakeMode(rawValue: defaults.string(forKey: Key.mode) ?? "") ?? .off
         let until = defaults.double(forKey: Key.until)
         timerUntil = until > 0 ? Date(timeIntervalSince1970: until) : nil
@@ -86,6 +102,7 @@ final class BDBHub: ObservableObject {
         defaults.set(new.rawValue, forKey: Key.mode)
         if new != .timer { timerUntil = nil; defaults.removeObject(forKey: Key.until) }
         evaluate()
+        notify()
     }
 
     func startTimer(minutes: Int) { startTimer(until: Date().addingTimeInterval(Double(minutes) * 60)) }
@@ -97,6 +114,7 @@ final class BDBHub: ObservableObject {
         defaults.set(BDBKeepAwakeMode.timer.rawValue, forKey: Key.mode)
         defaults.set(until.timeIntervalSince1970, forKey: Key.until)
         evaluate()
+        notify()
     }
 
     // MARK: Loop
@@ -110,7 +128,6 @@ final class BDBHub: ObservableObject {
             activities = []
             previousCPU = [:]
             lastScan = nil
-            BDBPanelController.shared.update()
             return
         }
         refreshVersionsIfDue()
@@ -120,7 +137,6 @@ final class BDBHub: ObservableObject {
         RunLoop.main.add(t, forMode: .common)
         timer = t
         tick()
-        BDBPanelController.shared.update()
     }
 
     private func tick() {
@@ -138,7 +154,7 @@ final class BDBHub: ObservableObject {
                 if result.activities.contains(where: \.busy) { self.lastBusy = Date() }
                 self.evaluate()
                 self.refreshVersionsIfDue()
-                BDBPanelController.shared.refit()
+                self.notify()
             }
         }
     }
@@ -155,6 +171,13 @@ final class BDBHub: ObservableObject {
                                                  lastBusy: lastBusy, timerUntil: timerUntil))
         power.set(hold, reason: "BDB AO Codenotch: coding agent active")
         holding = power.isHeld
+    }
+
+    private func notify() { onChange?() }
+
+    var graceEnds: Date? {
+        guard mode == .auto, busyCount == 0, holding, let lastBusy else { return nil }
+        return lastBusy.addingTimeInterval(300)
     }
 
     var statusLine: String {
@@ -190,14 +213,11 @@ final class BDBHub: ObservableObject {
             let installed = installedVersion(pkg)
             // AO is optional: no row at all when it is not installed.
             if installed == nil, pkg == .ao { continue }
-            let latest = defaults.string(forKey: Key.latest + pkg.npmName)
-            let newer = installed != nil && latest != nil && BDBVersionLogic.isNewer(latest!, than: installed!)
-            rows.append(BDBVersionRow(id: pkg.npmName,
-                                      text: BDBVersionLogic.line(name: pkg.title, installed: installed, latest: latest),
-                                      updateAvailable: newer))
+            rows.append(BDBVersionRow(title: pkg.title, installed: installed,
+                                      latest: defaults.string(forKey: Key.latest + pkg.npmName)))
         }
         versionRows = rows
-        BDBPanelController.shared.refit()
+        notify()
     }
 
     func refreshVersionsIfDue(force: Bool = false) {

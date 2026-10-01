@@ -175,7 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 + antigravityProfiles.map { AntigravityProvider(profile: $0) }
                 + [GLMProvider(), MiniMaxProvider(web: miniMaxWeb), GrokLocalProvider(), DevinLocalProvider(), OpenCodeProvider(),
                    CommandCodeProvider(), GitHubCopilotProvider(), KimiProvider(), KiroProvider(), AmpProvider(),
-                   ApifyProvider(), KiloProvider(),
+                   ApifyProvider(), KiloProvider(), BDBProvider(),
                    OllamaLocalProvider(endpoint: URL(string: preferences.ollamaEndpoint)!),
                    LMStudioLocalProvider(endpoint: URL(string: preferences.lmstudioEndpoint)!),
                    OllamaProvider(),
@@ -240,7 +240,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(updatePending: $0) }
                 .store(in: &cancellables)
-            if !isRunningTests { updater.start(); BDBHub.shared.start() }
+            if !isRunningTests { updater.start() }
+            // BDB AOS CLOUD: connected in Accounts == BDB features on.
+            preferences.$connectedProviders
+                .map { $0.contains(BDBProvider.providerID) }
+                .removeDuplicates()
+                .receive(on: RunLoop.main)
+                .sink { BDBHub.shared.enabled = $0 }
+                .store(in: &cancellables)
+            BDBHub.shared.onChange = { [weak store] in
+                _ = store?.refresh(providerID: BDBProvider.providerID, freshness: .standard)
+            }
 
             let relay = OllamaActivityRelay()
             self.ollamaRelay = relay

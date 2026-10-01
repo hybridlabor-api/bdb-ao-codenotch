@@ -372,7 +372,7 @@ final class CostIndexer {
         queue.async { [weak self] in
             guard let self, !self.scanScheduled else { return }
             self.scanScheduled = true
-            self.queue.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+            self.queue.asyncAfter(deadline: .now() + 10) { [weak self] in // bdb-perf: was 1.5
                 guard let self else { return }
                 self.scanScheduled = false
                 self.performScan()

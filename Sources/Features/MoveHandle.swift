@@ -299,7 +299,7 @@ struct CarriedHandle: View {
     }
 
     var body: some View {
-        TimelineView(.animation) { context in
+        TimelineView(.animation(minimumInterval: 1.0 / 60)) { context in // bdb-perf
             frame(at: context.date)
         }
         .frame(width: arcRadius * 2 + NotchLayout.orbStroke,

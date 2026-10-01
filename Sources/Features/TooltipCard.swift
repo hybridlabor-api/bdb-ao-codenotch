@@ -384,7 +384,7 @@ private struct StatusRing: View {
                     // value it is already heading towards does not cancel it —
                     // which is exactly how the refresh ring here once span for
                     // ever. Derived from the clock, it simply stops being drawn.
-                    TimelineView(.animation) { context in
+                    TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in // bdb-perf
                         ring(trim: 0.75)
                             .rotationEffect(.degrees(angle(at: context.date)))
                     }

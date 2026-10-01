@@ -1385,6 +1385,7 @@ final class NotchWindowController {
         let poll = Timer(timeInterval: 0.3, repeats: true) { [weak self] _ in
             MainActor.assumeIsolated { self?.cursorMoved() }
         }
+        poll.tolerance = 0.1 // bdb-perf
         RunLoop.main.add(poll, forMode: .common)
         cursorTimer = poll
 

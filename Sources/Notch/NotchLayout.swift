@@ -262,15 +262,23 @@ enum NotchLayout {
     ///
     /// Rounded up to whole lines: the card's height is a stack of line boxes,
     /// and half a line of budget leaves the last one straddling the clip.
+    // bdb-perf: memoized, the cursor poll re-asked this every 0.3s.
+    private static var bodyHeightCache: [String: CGFloat] = [:]
+
     static func bodyTextHeight(_ text: String) -> CGFloat {
         guard !text.isEmpty else { return cardBodyLineHeight }
+        let key = "\(cardTextWidth)|\(text)"
+        if let hit = bodyHeightCache[key] { return hit }
+        if bodyHeightCache.count > 256 { bodyHeightCache.removeAll() }
         let bounds = (text as NSString).boundingRect(
             with: CGSize(width: cardTextWidth, height: .greatestFiniteMagnitude),
             options: [.usesLineFragmentOrigin, .usesFontLeading],
             attributes: [.font: cardBodyFont]
         )
         let lines = max(1, Int((bounds.height / cardBodyLineHeight).rounded(.up)))
-        return CGFloat(lines) * cardBodyLineHeight
+        let height = CGFloat(lines) * cardBodyLineHeight
+        bodyHeightCache[key] = height
+        return height
     }
 
     private static func lineHeight(_ font: NSFont) -> CGFloat {

@@ -61,6 +61,7 @@ final class BDBHub: ObservableObject {
     private var lastScan: Date?
     private var lastBusy: Date?
     private var fetching = false
+    private var lastState: BDBState?
 
     /// Mirrors "connected" for the BDB AOS CLOUD entry in Accounts; set from
     /// the app delegate, never persisted here.
@@ -131,9 +132,10 @@ final class BDBHub: ObservableObject {
             return
         }
         refreshVersionsIfDue()
-        let t = Timer(timeInterval: 5, repeats: true) { [weak self] _ in
+        let t = Timer(timeInterval: 15, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.tick() }
         }
+        t.tolerance = 5
         RunLoop.main.add(t, forMode: .common)
         timer = t
         tick()
@@ -153,7 +155,7 @@ final class BDBHub: ObservableObject {
                 self.activities = result.activities
                 if result.activities.contains(where: \.busy) { self.lastBusy = Date() }
                 self.evaluate()
-                self.refreshVersionsIfDue()
+                self.fetchVersionsIfDue()
                 self.notify()
             }
         }
@@ -173,7 +175,12 @@ final class BDBHub: ObservableObject {
         holding = power.isHeld
     }
 
-    private func notify() { onChange?() }
+    private func notify() {
+        let s = state
+        guard s != lastState else { return }
+        lastState = s
+        onChange?()
+    }
 
     var graceEnds: Date? {
         guard mode == .auto, busyCount == 0, holding, let lastBusy else { return nil }
@@ -222,6 +229,10 @@ final class BDBHub: ObservableObject {
 
     func refreshVersionsIfDue(force: Bool = false) {
         rebuildRows()
+        fetchVersionsIfDue(force: force)
+    }
+
+    private func fetchVersionsIfDue(force: Bool = false) {
         let last = defaults.object(forKey: Key.fetched) as? Date
         guard enabled, !fetching, force || BDBVersionLogic.due(lastFetch: last, now: Date()) else { return }
         fetching = true

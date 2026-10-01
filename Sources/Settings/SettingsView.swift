@@ -26,7 +26,7 @@ extension View {
 /// crossing-and-notification machinery it switches is Notifications' to
 /// explain.
 private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
-    case accounts, phone, deepseek, ollama, lmstudio, customEndpoints, appearance, notifications, costs, general
+    case accounts, phone, deepseek, ollama, lmstudio, customEndpoints, appearance, notifications, costs, bdb, general
 
     /// The sections the sidebar lists; Phone only once pairing is offered.
     static var visible: [SettingsSection] {
@@ -56,6 +56,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return L10n.t("Appearance")
         case .notifications: return L10n.t("Notifications")
         case .costs:         return L10n.t("Costs")
+        case .bdb:           return "BDB"
         case .general:       return L10n.t("General")
         }
     }
@@ -83,6 +84,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return L10n.t("How the notch looks and where it sits.")
         case .notifications: return L10n.t("What Codenotch tells you, and when.")
         case .costs:         return L10n.t("What each project spent of each login's allowance.")
+        case .bdb:           return "Keep agents awake, AOS/AO versions."
         case .general:       return L10n.t("Startup, updates and everything else.")
         }
     }
@@ -98,6 +100,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return "paintbrush.fill"
         case .notifications: return "bell.badge.fill"
         case .costs:         return "banknote.fill"
+        case .bdb:           return "bolt.circle.fill"
         case .general:       return "gearshape.fill"
         }
     }
@@ -116,6 +119,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return .indigo
         case .notifications: return .red
         case .costs:         return .mint
+        case .bdb:           return BDBPalette.greenDeep
         case .general:       return .gray
         }
     }
@@ -407,7 +411,9 @@ struct SettingsView: View {
     /// The providers the menu bar can show, from the same snapshots it draws.
     @State private var menuBarChoices: [MenuBarChoice] = []
     @State private var displays: [DisplayOption] = []
-    @State private var selection: SettingsSection = .accounts
+    // `bdb.settingsStart` lets a screenshot script open on a given pane.
+    @State private var selection: SettingsSection =
+        SettingsSection(rawValue: UserDefaults.standard.string(forKey: "bdb.settingsStart") ?? "") ?? .accounts
     /// Whether Accounts shows its provider panes. Remembered, so someone who
     /// folds the group away finds it folded next time.
     @AppStorage("settingsAccountsExpanded") private var accountsExpanded = true
@@ -731,6 +737,7 @@ struct SettingsView: View {
             CustomEndpointsSettingsView(preferences: preferences)
         case .appearance:    appearancePane
         case .notifications: notificationsPane
+        case .bdb:           BDBSettingsPane()
         case .general:       generalPane
         }
     }

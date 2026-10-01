@@ -93,6 +93,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var miniMaxWeb: WebSessionProvider?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        if CommandLine.arguments.contains("--bdb-selftest") { exit(BDBSelfTest.run()) }
         // Set here, not in the Info.plist: this call is applied at launch and
         // overrides `LSUIElement` either way. Removing the plist key alone left
         // the app registered as a UIElement with no Dock tile, which looked
@@ -239,7 +240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 .receive(on: RunLoop.main)
                 .sink { [weak fleet] in fleet?.apply(updatePending: $0) }
                 .store(in: &cancellables)
-            if !isRunningTests { updater.start() }
+            if !isRunningTests { updater.start(); BDBHub.shared.start() }
 
             let relay = OllamaActivityRelay()
             self.ollamaRelay = relay
@@ -1239,6 +1240,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        BDBHub.shared.shutdown()
         ollamaRelay?.configure(enabled: false, endpoint: OllamaEndpoint.defaultAddress)
         lmstudioMetrics?.stop()
         tokenRefresher?.stop()

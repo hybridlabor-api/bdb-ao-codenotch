@@ -380,6 +380,10 @@ dmg-ci: build-ci
 # --- BDB: SwiftPM build without Xcode ------------------------------------------
 # Command Line Tools only: swift build + hand-assembled, ad-hoc signed app and
 # dmg (build/bdb/). See docs/bdb/BUILD.md.
-.PHONY: bdb-build
+.PHONY: bdb-build bdb-selftest
 bdb-build:
 	Scripts/bdb-bundle.sh
+
+# Decision-logic asserts (XCTest needs Xcode); run after bdb-build.
+bdb-selftest:
+	"build/bdb/BDB AO Codenotch.app/Contents/MacOS/Codenotch" --bdb-selftest

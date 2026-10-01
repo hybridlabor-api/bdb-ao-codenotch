@@ -79,7 +79,14 @@ final class NotchViewModel: ObservableObject {
     /// rather than SwiftUI's `.onHover`: the panel ignores mouse events until
     /// the cursor is over it, so SwiftUI cannot see the crossing that turns
     /// event handling on in the first place.
-    @Published var hoveredIndex: Int?
+    @Published var hoveredIndex: Int? {
+        didSet {
+            if let i = hoveredIndex, i != oldValue, snapshots.indices.contains(i),
+               snapshots[i].id == BDBProvider.providerID {
+                BDBHub.shared.cardOpened()
+            }
+        }
+    }
     /// Ticked on refresh so the "Resets in N min" copy stays honest.
     @Published var now: Date = Date()
     @Published var resetTimeFormat: ResetTimeFormat = .automatic
@@ -1289,7 +1296,7 @@ final class NotchViewModel: ObservableObject {
                 localModelName: snapshot.localModel?.name,
                 showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
-                compactRowCount: snapshot.compactRowCount,
+                compactRowCount: snapshot.compactRowCount, noteRowCount: snapshot.noteRowCount,
                 showsDeepSeekPricing: deepSeekPricingEnabled,
                 costRows: costRows(for: snapshot))
         }.max() ?? 0

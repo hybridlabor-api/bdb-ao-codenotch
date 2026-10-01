@@ -65,23 +65,38 @@ enum BDBSelfTest {
         check(!BDBVersionLogic.isNewer("4.13.2", than: "4.13.2"), "equal is not newer")
         check(!BDBVersionLogic.isNewer("4.9.0", than: "4.13.2"), "numeric not lexical")
         check(!BDBVersionLogic.isNewer("4.13.3-beta.1", than: "4.13.3"), "prerelease not newer")
-        check(BDBVersionLogic.line(name: "AOS", installed: "4.13.2", latest: "4.14.0") == "AOS 4.13.2 · update 4.14.0 available", "row text")
+        check(BDBVersionLogic.isNewer("4.16.0", than: "4.12.1"), "4.16 newer than 4.12")
         check(BDBVersionLogic.version(fromJSON: Data(#"{"name":"x","version":"1.2.3"}"#.utf8)) == "1.2.3", "package.json version")
         check(BDBVersionLogic.due(lastFetch: nil, now: t0), "fetch due when never fetched")
-        check(!BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(5 * 3600)), "not due within 6 h")
-        check(BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(6 * 3600)), "due after 6 h")
+        check(!BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(59 * 60)), "not due within 1 h")
+        check(BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(3600)), "due after 1 h")
+        check(!BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(9 * 60), every: BDBVersionLogic.cardOpenInterval), "card open: not due within 10 min")
+        check(BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(600), every: BDBVersionLogic.cardOpenInterval), "card open: due after 10 min")
+        check(BDBVersionLogic.packagePath(npmRoot: "/opt/homebrew/lib/node_modules\n", npmName: "@a/b") == "/opt/homebrew/lib/node_modules/@a/b/package.json", "npm root path")
+        check(BDBVersionLogic.packagePath(npmRoot: "npm ERR!", npmName: "@a/b") == nil, "bad npm root falls back")
+        let goOut = "/x/ao: go1.26\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=3b873af12d26ce06c9b54ed5ecf26cfa29c597e1\n\tbuild\tvcs.modified=true\n"
+        check(BDBVersionLogic.buildInfo(fromGoVersion: goOut) == "3b873af dev", "AO build info dirty")
+        check(BDBVersionLogic.buildInfo(fromGoVersion: goOut.replacingOccurrences(of: "true", with: "false")) == "3b873af", "AO build info clean")
+        check(BDBVersionLogic.buildInfo(fromGoVersion: "nothing") == nil, "AO build info missing")
+        let n1 = BDBVersionLogic.note(installed: "4.12.1", latest: "4.16.0", checked: t0, now: t0)
+        check(n1?.text == "update available: 4.16.0" && n1?.accent == true, "note: update in accent")
+        let n2 = BDBVersionLogic.note(installed: "4.16.0", latest: "4.16.0", checked: t0, now: t0.addingTimeInterval(300))
+        check(n2?.text == "up to date \u{00B7} checked \(ElapsedCopy.ago(since: t0, now: t0.addingTimeInterval(300)))" && n2?.accent == false, "note: up to date, checked")
+        check(BDBVersionLogic.note(installed: nil, latest: "4.16.0", checked: t0, now: t0) == nil, "note: none when not installed")
 
         // Snapshot for the notch gauge and hover card
         let acts = [BDBAgentActivity(agent: .claude, pid: 1, busy: true), BDBAgentActivity(agent: .claude, pid: 2, busy: false),
                     BDBAgentActivity(agent: .opencode, pid: 3, busy: false)]
         let st = BDBState(mode: .auto, holding: true, statusLine: "Awake: 1 agent busy", timerUntil: nil, graceEnds: nil,
                           agents: BDBState.from(acts),
-                          versions: [BDBVersionRow(title: "AOS", installed: "4.12.1", latest: "4.13.2")])
+                          versions: [BDBVersionRow(title: "AOS", installed: "4.12.1", latest: "4.16.0", checked: t0)])
         let snap = BDBSnapshot.make(st)
         check(snap.displayName == "BDB AOS CLOUD" && snap.headlineText == "1", "gauge label is the busy-agent count")
         check(abs((snap.usedFraction ?? -1) - 1.0 / 3.0) < 1e-9, "ring arc is busy/running")
         check(snap.windows.first { $0.id == "agent-claude" }?.detail == "2 running · 1 busy", "agent row text")
-        check(snap.windows.first { $0.id == "ver-AOS" }?.detail == "4.12.1 · 4.13.2 available", "version row text")
+        let verRow = snap.windows.first { $0.id == "ver-AOS" }
+        check(verRow?.detail == "4.12.1" && verRow?.note == "update available: 4.16.0" && verRow?.noteAccent == true, "version row two lines")
+        check(snap.noteRowCount == 1, "note row counted for card height")
         check(BDBSnapshot.make(BDBState()).headlineText == "0", "idle gauge shows 0")
 
         print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")

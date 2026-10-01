@@ -30,7 +30,7 @@ struct BDBState: Equatable {
 enum BDBSnapshot {
     /// The notch ring shows the number of busy agents; the arc is busy / running.
     /// Rows reuse the stock card: a bar row for keep-awake, count rows for the rest.
-    static func make(_ s: BDBState) -> ProviderSnapshot {
+    static func make(_ s: BDBState, now: Date = Date()) -> ProviderSnapshot {
         var windows: [LimitWindow] = []
 
         let modeName: String
@@ -58,7 +58,9 @@ enum BDBSnapshot {
                 detail: "\(a.running) running · \(a.busy) busy"))
         }
         for v in s.versions {
-            windows.append(LimitWindow(id: "ver-\(v.title)", group: "Versions", label: v.title, detail: v.detail))
+            let n = v.note(now: now)
+            windows.append(LimitWindow(id: "ver-\(v.title)", group: "Versions", label: v.title, detail: v.detail,
+                                       note: n?.text, noteAccent: n?.accent ?? false))
         }
 
         return ProviderSnapshot(

@@ -1,8 +1,8 @@
 import Foundation
 
 /// Installed vs. latest npm version for the BDB packages. Never executes
-/// `aos`: versions come from the installed package.json and the public
-/// registry.
+/// `aos`: versions come from the installed package.json (path from `npm root -g`)
+/// and the public registry.
 enum BDBVersionLogic {
     static func parse(_ v: String) -> [Int]? {
         let core = v.split(separator: "-", maxSplits: 1)[0].split(separator: "+")[0]
@@ -26,26 +26,48 @@ enum BDBVersionLogic {
         (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["version"] as? String
     }
 
-    static func line(name: String, installed: String?, latest: String?) -> String {
-        guard let installed else { return "\(name) not installed" }
-        if let latest, isNewer(latest, than: installed) {
-            return "\(name) \(installed) · update \(latest) available"
-        }
-        return "\(name) \(installed)" + (latest == nil ? "" : " · up to date")
-    }
+    static let fetchInterval: TimeInterval = 3600
+    static let cardOpenInterval: TimeInterval = 600
 
-    static func due(lastFetch: Date?, now: Date, every: TimeInterval = 6 * 3600) -> Bool {
+    static func due(lastFetch: Date?, now: Date, every: TimeInterval = fetchInterval) -> Bool {
         guard let lastFetch else { return true }
         return now.timeIntervalSince(lastFetch) >= every
+    }
+
+    /// `<root>/@hybridlabor-api/aos/package.json` for the root `npm root -g` printed.
+    static func packagePath(npmRoot output: String?, npmName: String) -> String? {
+        guard let root = output?.trimmingCharacters(in: .whitespacesAndNewlines), root.hasPrefix("/") else { return nil }
+        return "\(root)/\(npmName)/package.json"
+    }
+
+    /// Short SHA, plus "dev" for a dirty tree, from `go version -m <binary>` output.
+    static func buildInfo(fromGoVersion out: String) -> String? {
+        func value(_ key: String) -> String? {
+            for line in out.split(separator: "\n") {
+                let f = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
+                if f.count >= 2, f[0] == "build", f[1].hasPrefix(key + "=") { return String(f[1].dropFirst(key.count + 1)) }
+            }
+            return nil
+        }
+        guard let rev = value("vcs.revision"), !rev.isEmpty else { return nil }
+        return String(rev.prefix(7)) + (value("vcs.modified") == "true" ? " dev" : "")
+    }
+
+    /// Second line of a version row and whether it takes the accent colour.
+    static func note(installed: String?, latest: String?, checked: Date?, now: Date,
+                     fallback: String = "not checked yet") -> (text: String, accent: Bool)? {
+        guard let installed else { return nil }
+        if let latest, isNewer(latest, than: installed) { return ("update available: \(latest)", true) }
+        if latest != nil, let checked { return ("up to date \u{00B7} checked \(ElapsedCopy.ago(since: checked, now: now))", false) }
+        return (fallback, false)
     }
 }
 
 struct BDBPackage: Equatable {
     let title: String
     let npmName: String          // @hybridlabor-api/aos
-    var installedPath: String { "/opt/homebrew/lib/node_modules/\(npmName)/package.json" }
+    var fallbackPath: String { "/opt/homebrew/lib/node_modules/\(npmName)/package.json" }
     var latestURL: URL { URL(string: "https://registry.npmjs.org/\(npmName)/latest")! }
 
     static let aos = BDBPackage(title: "AOS", npmName: "@hybridlabor-api/aos")
-    static let ao = BDBPackage(title: "AO", npmName: "@hybridlabor-api/bdb-agent-orchestrator")
 }

@@ -26,17 +26,17 @@ struct BDBVersionRow: Identifiable, Equatable {
     let title: String
     let installed: String?
     let latest: String?
+    var checked: Date? = nil
+    /// Line 2 when there is no release feed to compare against.
+    var fallbackNote = "not checked yet"
     var id: String { title }
     var updateAvailable: Bool {
         guard let installed, let latest else { return false }
         return BDBVersionLogic.isNewer(latest, than: installed)
     }
-    var text: String { BDBVersionLogic.line(name: title, installed: installed, latest: latest) }
-    /// What follows the title in the hover card.
-    var detail: String {
-        guard let installed else { return "not installed" }
-        if updateAvailable, let latest { return "\(installed) · \(latest) available" }
-        return installed + (latest == nil ? "" : " · up to date")
+    var detail: String { installed ?? "not installed" }
+    func note(now: Date) -> (text: String, accent: Bool)? {
+        BDBVersionLogic.note(installed: installed, latest: latest, checked: checked, now: now, fallback: fallbackNote)
     }
 }
 
@@ -209,47 +209,98 @@ final class BDBHub: ObservableObject {
 
     // MARK: Versions
 
-    private func installedVersion(_ pkg: BDBPackage) -> String? {
-        guard let data = FileManager.default.contents(atPath: pkg.installedPath) else { return nil }
-        return BDBVersionLogic.version(fromJSON: data)
+    private var npmRoot: String?
+    private var aoBuild: String?
+    private var resolvedTools = false
+    private var lastAttempt: Date?
+
+    private var aosPath: String {
+        BDBVersionLogic.packagePath(npmRoot: npmRoot, npmName: BDBPackage.aos.npmName) ?? BDBPackage.aos.fallbackPath
     }
 
-    private func rebuildRows() {
-        var rows: [BDBVersionRow] = []
-        for pkg in [BDBPackage.aos, .ao] {
-            let installed = installedVersion(pkg)
-            // AO is optional: no row at all when it is not installed.
-            if installed == nil, pkg == .ao { continue }
-            rows.append(BDBVersionRow(title: pkg.title, installed: installed,
-                                      latest: defaults.string(forKey: Key.latest + pkg.npmName)))
+    /// One-off at launch: where global npm packages live, and the AO binary's
+    /// build info. Never runs `aos` or `ao`.
+    private func resolveToolsOnce() {
+        guard !resolvedTools else { return }
+        resolvedTools = true
+        DispatchQueue.global(qos: .utility).async { [weak self] in
+            let npm = ["/opt/homebrew/bin/npm", "/usr/local/bin/npm"].first { FileManager.default.isExecutableFile(atPath: $0) }
+            let root = npm.flatMap { Self.run($0, ["root", "-g"]) }
+            let go = ["/opt/homebrew/bin/go", "/usr/local/bin/go", "/usr/local/go/bin/go"].first { FileManager.default.isExecutableFile(atPath: $0) }
+            let ao = NSHomeDirectory() + "/.local/bin/ao"
+            let build = go.flatMap { g in FileManager.default.isExecutableFile(atPath: ao) ? Self.run(g, ["version", "-m", ao]) : nil }
+                .flatMap(BDBVersionLogic.buildInfo(fromGoVersion:))
+            DispatchQueue.main.async {
+                self?.npmRoot = root
+                self?.aoBuild = build
+                self?.rebuildRows()
+            }
         }
+    }
+
+    nonisolated private static func run(_ exe: String, _ args: [String]) -> String? {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: exe)
+        p.arguments = args
+        p.environment = ["PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin", "HOME": NSHomeDirectory()]
+        let pipe = Pipe()
+        p.standardOutput = pipe
+        p.standardError = FileHandle.nullDevice
+        do { try p.run() } catch { return nil }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        p.waitUntilExit()
+        return p.terminationStatus == 0 ? String(decoding: data, as: UTF8.self) : nil
+    }
+
+    /// Reads one small file; only called at launch, on fetch and on card open, never per tick.
+    private func rebuildRows() {
+        let installed = FileManager.default.contents(atPath: aosPath).flatMap(BDBVersionLogic.version(fromJSON:))
+        var rows = [BDBVersionRow(title: "AOS", installed: installed,
+                                  latest: defaults.string(forKey: Key.latest + BDBPackage.aos.npmName),
+                                  checked: defaults.object(forKey: Key.fetched) as? Date)]
+        if let aoBuild {
+            rows.append(BDBVersionRow(title: "AO", installed: aoBuild, latest: nil, fallbackNote: "local build, no release feed"))
+        }
+        guard rows != versionRows else { return }
         versionRows = rows
         notify()
     }
 
     func refreshVersionsIfDue(force: Bool = false) {
+        resolveToolsOnce()
         rebuildRows()
         fetchVersionsIfDue(force: force)
     }
 
-    private func fetchVersionsIfDue(force: Bool = false) {
+    /// Hover card opened: re-read the install, refetch when the last fetch is over 10 min old.
+    func cardOpened() {
+        guard enabled else { return }
+        rebuildRows()
+        fetchVersionsIfDue(every: BDBVersionLogic.cardOpenInterval)
+    }
+
+    private func fetchVersionsIfDue(force: Bool = false, every: TimeInterval = BDBVersionLogic.fetchInterval) {
         let last = defaults.object(forKey: Key.fetched) as? Date
-        guard enabled, !fetching, force || BDBVersionLogic.due(lastFetch: last, now: Date()) else { return }
+        let now = Date()
+        guard enabled, !fetching, force || BDBVersionLogic.due(lastFetch: last, now: now, every: every),
+              force || BDBVersionLogic.due(lastFetch: lastAttempt, now: now, every: 300) else { return }
         fetching = true
-        Task { [weak self] in
-            var any = false
-            for pkg in [BDBPackage.aos, .ao] {
-                var req = URLRequest(url: pkg.latestURL, timeoutInterval: 10)
-                req.setValue("application/json", forHTTPHeaderField: "Accept")
-                if let (data, resp) = try? await URLSession.shared.data(for: req),
-                   (resp as? HTTPURLResponse)?.statusCode == 200,
-                   let v = BDBVersionLogic.version(fromJSON: data) {
-                    UserDefaults.standard.set(v, forKey: Key.latest + pkg.npmName)
-                    any = true
-                }
+        lastAttempt = now
+        Task.detached(priority: .utility) { [weak self] in
+            var req = URLRequest(url: BDBPackage.aos.latestURL, timeoutInterval: 10)
+            req.setValue("application/json", forHTTPHeaderField: "Accept")
+            let fetched: String?
+            if let (data, resp) = try? await URLSession.shared.data(for: req),
+               (resp as? HTTPURLResponse)?.statusCode == 200 {
+                fetched = BDBVersionLogic.version(fromJSON: data)
+            } else {
+                fetched = nil
             }
             await MainActor.run {
-                if any { UserDefaults.standard.set(Date(), forKey: Key.fetched) }
+                if let fetched {
+                    UserDefaults.standard.set(fetched, forKey: Key.latest + BDBPackage.aos.npmName)
+                    UserDefaults.standard.set(Date(), forKey: Key.fetched)
+                }
                 self?.fetching = false
                 self?.rebuildRows()
             }

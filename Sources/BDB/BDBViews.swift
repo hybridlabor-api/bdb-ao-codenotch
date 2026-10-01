@@ -13,7 +13,7 @@ struct BDBSettingsPane: View {
                     get: { preferences.isConnected(BDBProvider.providerID) },
                     set: { preferences.setConnected($0, for: BDBProvider.providerID) }
                 ))
-                Text("Off by default. Shows as a gauge in the notch, like any provider. When on, the app lists running processes every 5 s to find coding agents and checks the npm registry for AOS/AO releases at most every 6 h.")
+                Text("Off by default. Shows as a gauge in the notch, like any provider. When on, the app lists running processes every 5 s to find coding agents and checks the npm registry for AOS releases every hour and when the card opens (at most every 10 min).")
                     .font(.caption).foregroundStyle(.secondary)
             }
             Section("Keep awake") {
@@ -49,7 +49,11 @@ struct BDBSettingsPane: View {
                 if hub.versionRows.isEmpty {
                     Text(hub.enabled ? "Checking…" : "Enable BDB AOS CLOUD to check.").foregroundStyle(.secondary)
                 }
-                ForEach(hub.versionRows) { Text($0.text) }
+                ForEach(hub.versionRows) { row in
+                    let n = row.note(now: Date())
+                    LabeledContent(row.title, value: row.detail)
+                    if let n { Text(n.text).font(.caption).foregroundStyle(n.accent ? Color.accentColor : .secondary) }
+                }
                 Button("Check now") { hub.refreshVersionsIfDue(force: true) }.disabled(!hub.enabled)
             }
         }

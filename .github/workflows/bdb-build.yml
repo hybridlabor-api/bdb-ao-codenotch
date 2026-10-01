@@ -50,6 +50,25 @@ jobs:
           path: Codenotch-adhoc.zip
           if-no-files-found: error
 
+  swiftpm:
+    if: github.repository != 'vinzdg/codenotch'
+    name: macOS SwiftPM build (no Xcode project)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Show toolchain
+        run: swift --version
+
+      - name: Build app and dmg
+        run: make bdb-build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: Codenotch-swiftpm-dmg
+          path: build/bdb/Codenotch.dmg
+          if-no-files-found: error
+
   windows:
     if: github.repository != 'vinzdg/codenotch'
     name: Windows build and test

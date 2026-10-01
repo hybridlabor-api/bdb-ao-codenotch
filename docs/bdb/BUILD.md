@@ -65,3 +65,38 @@ The Makefile also exports `DEVELOPER_DIR=/Applications/Xcode.app/Contents/Develo
 ## Decision 2026-10-01: build in CI
 
 No local Xcode install. `.github/workflows/bdb-build.yml` runs `make test-ci` and `make build-ci` on `macos-26` (xcodegen via brew), uploads `Codenotch-adhoc.zip`, and builds/tests `windows/` on `windows-latest`. Not yet run: a first run needs the repo pushed to the private origin and Actions enabled. Check in its log: the Xcode version on the runner, `brew install xcodegen` success, and `make test-ci` results.
+
+## SwiftPM build with Command Line Tools only (no Xcode) — works, 2026-10-01
+
+Tim rejected the 15 GB Xcode install, so a BDB-only SwiftPM path exists beside upstream's xcodegen one (`project.yml` and the Makefile's upstream targets are untouched).
+
+```sh
+swift build                 # debug; ~130 s cold, fetches Sparkle + SwiftNIO from GitHub
+make bdb-build              # = Scripts/bdb-bundle.sh: release build, app bundle, ad-hoc sign, dmg
+open build/bdb/Codenotch.app
+```
+
+Results on this Mac (CLT only, Swift 6.3, SDK MacOSX26.4):
+
+| Step | Result |
+|---|---|
+| `swift build` | OK, first try, 0 errors |
+| `Scripts/bdb-bundle.sh` | OK. `build/bdb/Codenotch.app` (ad-hoc signed, `codesign --verify --deep --strict` passes) and `build/bdb/Codenotch.dmg` (9,996,328 bytes) |
+| Launch | `open` started it, process alive after 8 s, quit cleanly via AppleScript, no crash report in `~/Library/Logs/DiagnosticReports` |
+| `swift build --build-tests` / `swift test` | **FAILS: `error: no such module 'XCTest'`** in every test file. CLT ships Swift Testing (`Testing.framework`) but no XCTest, and the suite is XCTest. Tests only run via Xcode (`make test`, or the CI `macos` job). |
+
+What the SwiftPM path needed:
+- `Package.swift` mirrors `project.yml` (macOS 15, Sparkle >= 2.6.0, NIOHTTP1/NIOPosix; the pins in `Package.resolved` apply: Sparkle 2.9.6, swift-nio 2.102.0). Swift language mode 5.
+- The vendored zstd C decoder became its own target `CZstd` (SwiftPM has no bridging header); one upstream edit: `#if SWIFT_PACKAGE import CZstd #endif` in `Sources/Providers/ClaudeDesktopUsageCache.swift`.
+- Asset catalog (needs `actool`): `AppIcon` converted to `AppIcon.icns` with `iconutil`; `MenuBarIcon` and `glyph-*` SVGs copied to `Resources/` as plain files, which `NSImage(named:)` can find. UNVERIFIED: whether SVG files load that way and the menu bar / provider glyphs render; the code falls back when `NSImage(named:)` returns nil, but glyph appearance was not inspected visually.
+- `Localizable.xcstrings` (needs Xcode's compiler): `Scripts/bdb-xcstrings.py` writes `<lang>.lproj/Localizable.strings` (plain JSON conversion; the catalog only has simple string units). Not verified in the running UI.
+- `Info.plist` template variables filled by `sed` from `project.yml` versions; `CFBundleIconFile` added.
+- Sparkle.framework copied from `.build/artifacts` into `Contents/Frameworks` with an `@executable_path/../Frameworks` rpath.
+
+Limits of this path:
+- Ad-hoc signed, no hardened runtime, no notarisation: quarantined downloads need `xattr -dr com.apple.quarantine`. Keychain "Always Allow" does not persist across rebuilds (as upstream warns for ad-hoc builds).
+- Sparkle auto-update points at upstream's feed (`hivinz.com/appcast.xml`, upstream EdDSA key). A BDB build must not self-update from it; disable or repoint before distributing (not done here).
+- No unit tests locally (above). The hardened-runtime `disable-library-validation` entitlement from `make build-ci` is not needed because the runtime is off.
+- Not exercised beyond launch: usage providers, notch rendering, settings, localisation.
+
+CI: `.github/workflows/bdb-build.yml` gained a `swiftpm` job (`make bdb-build`, uploads `Codenotch-swiftpm-dmg`) next to the xcodegen `macos` job, which still runs the XCTest suite.

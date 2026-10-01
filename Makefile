@@ -376,3 +376,10 @@ dmg-ci: build-ci
 	done
 	rm -rf $(CI_DIR)/stage
 	@echo "Unsigned disk image: $(CI_DMG)"
+
+# --- BDB: SwiftPM build without Xcode ------------------------------------------
+# Command Line Tools only: swift build + hand-assembled, ad-hoc signed app and
+# dmg (build/bdb/). See docs/bdb/BUILD.md.
+.PHONY: bdb-build
+bdb-build:
+	Scripts/bdb-bundle.sh

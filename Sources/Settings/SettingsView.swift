@@ -588,7 +588,7 @@ struct SettingsView: View {
                     .resizable()
                     .interpolation(.high)
                     .frame(width: 22, height: 22)
-                Text("Codenotch")
+                Text(BDBBrand.displayName)
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(.white)
             }
@@ -627,7 +627,7 @@ struct SettingsView: View {
             VStack(alignment: .leading, spacing: 6) {
                 SettingsQuitRow(quit: quit)
                 HStack(spacing: 8) {
-                    Text("Codenotch \(updater.currentVersion)")
+                    Text("\(BDBBrand.displayName) \(updater.currentVersion)")
                         .font(.system(size: 11, weight: .regular))
                         .foregroundStyle(.white.opacity(0.32))
                     Spacer(minLength: 0)
@@ -1345,6 +1345,7 @@ struct SettingsView: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
 
+                if Updater.isAvailable {
                 Toggle(L10n.t("Check for updates automatically"), isOn: Binding(
                     get: { updater.automatic },
                     set: { updater.automatic = $0 }
@@ -1369,6 +1370,7 @@ struct SettingsView: View {
                         .help(L10n.t("Show the update card in the notch, with nothing downloaded"))
                     Button(L10n.t("Check now")) { updater.checkNow() }
                         .controlSize(.small)
+                }
                 }
 
                 // Says what happened, where the user is already looking.

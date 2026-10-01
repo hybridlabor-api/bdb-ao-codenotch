@@ -6,14 +6,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OUT=build/bdb
-APP=$OUT/Codenotch.app
+NAME="BDB AO Codenotch"
+BUNDLE_ID=dev.bdb.ao-codenotch
+APP="$OUT/$NAME.app"
+DMG="$OUT/BDB-AO-Codenotch.dmg"
 VERSION=$(awk -F'"' '/MARKETING_VERSION:/ {print $2}' project.yml)
 BUILD=$(awk -F'"' '/CURRENT_PROJECT_VERSION:/ {print $2}' project.yml)
 
 swift build -c release --product Codenotch
 BIN=$(swift build -c release --show-bin-path)
 
-rm -rf "$APP" "$OUT/Codenotch.dmg" "$OUT/stage"
+rm -rf "$APP" "$DMG" "$OUT/stage"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp "$BIN/Codenotch" "$APP/Contents/MacOS/Codenotch"
 
@@ -25,18 +28,31 @@ install_name_tool -add_rpath @executable_path/../Frameworks "$APP/Contents/MacOS
 
 # Info.plist: the checked-in one is an Xcode template; fill its variables.
 sed -e "s/\$(EXECUTABLE_NAME)/Codenotch/" \
-    -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/com.vinz.codenotch/" \
+    -e "s/\$(PRODUCT_BUNDLE_IDENTIFIER)/$BUNDLE_ID/" \
     -e "s/\$(MARKETING_VERSION)/$VERSION/" \
     -e "s/\$(CURRENT_PROJECT_VERSION)/$BUILD/" \
     Sources/Info.plist > "$APP/Contents/Info.plist"
-/usr/libexec/PlistBuddy -c "Add :CFBundleIconFile string AppIcon" "$APP/Contents/Info.plist"
+PB() { /usr/libexec/PlistBuddy -c "$1" "$APP/Contents/Info.plist"; }
+PB "Add :CFBundleIconFile string AppIcon"
+PB "Set :CFBundleDisplayName $NAME"
+PB "Set :CFBundleName $NAME"
+PB "Add :NSHumanReadableCopyright string Based on Codenotch by vinzdg (MIT). BDB changes (c) hybridlabor-api."
+# No Sparkle feed, no key: every update path in the app is off (BDBBrand).
+PB "Delete :SUFeedURL"
+PB "Delete :SUPublicEDKey"
+PB "Delete :SUScheduledCheckInterval"
+PB "Set :SUEnableAutomaticChecks false"
 
-# App icon: appiconset -> .icns (iconutil wants icon_*.png in a *.iconset).
-ICONSET=$OUT/AppIcon.iconset
-rm -rf "$ICONSET"; mkdir -p "$ICONSET"
-cp Sources/Assets.xcassets/AppIcon.appiconset/icon_*.png "$ICONSET/"
-iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
-rm -rf "$ICONSET"
+# App icon: the BDB variant in Brand/ (regenerate with Scripts/bdb-icon.py).
+iconutil -c icns Brand/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
+
+# Credits for the About panel; the MIT notice travels with the app.
+cp LICENSE "$APP/Contents/Resources/LICENSE-Codenotch-MIT.txt"
+cat > "$APP/Contents/Resources/Credits.rtf" <<'RTF'
+{\rtf1\ansi\deff0{\fonttbl{\f0 Helvetica;}}\f0\fs20
+BDB AO Codenotch is a fork of Codenotch by vinzdg (https://github.com/vinzdg/codenotch), MIT licence. The licence text is in LICENSE-Codenotch-MIT.txt inside this app.\par
+BDB additions (c) hybridlabor-api.\par}
+RTF
 
 # Named images: NSImage(named:) also resolves plain files in Resources.
 for d in Sources/Assets.xcassets/*.imageset; do
@@ -56,6 +72,6 @@ codesign --force --deep -s - "$APP"
 codesign --verify --deep --strict "$APP"
 
 mkdir -p "$OUT/stage"; cp -R "$APP" "$OUT/stage/"; ln -s /Applications "$OUT/stage/Applications"
-hdiutil create -volname Codenotch -srcfolder "$OUT/stage" -ov -format UDZO "$OUT/Codenotch.dmg"
+hdiutil create -volname "$NAME" -srcfolder "$OUT/stage" -ov -format UDZO "$DMG"
 rm -rf "$OUT/stage"
-echo "App: $APP"; echo "DMG: $OUT/Codenotch.dmg"
+echo "App: $APP"; echo "DMG: $DMG"

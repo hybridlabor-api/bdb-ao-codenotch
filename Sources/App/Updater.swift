@@ -68,9 +68,11 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
     /// Mirrors the preference, so switching it off really does stop the checks
     /// rather than only hiding them. Never downloads unasked: what is found is
     /// offered in the notch first.
+    static var isAvailable: Bool { BDBBrand.updatesAvailable }
+
     var automatic: Bool {
-        get { sparkle.automaticallyChecksForUpdates }
-        set { sparkle.automaticallyChecksForUpdates = newValue }
+        get { Self.isAvailable && sparkle.automaticallyChecksForUpdates }
+        set { if Self.isAvailable { sparkle.automaticallyChecksForUpdates = newValue } }
     }
 
     var currentVersion: String {
@@ -84,7 +86,7 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
     /// updater is lazy so that `self` exists before it is handed over as the
     /// delegate.
     func start() {
-        guard !started else { return }
+        guard Self.isAvailable, !started else { return }
         started = true
         sparkle.automaticallyDownloadsUpdates = false
         do {
@@ -218,6 +220,7 @@ final class Updater: NSObject, ObservableObject, SPUUpdaterDelegate {
     /// This one *does* show UI — it was asked for, so silence would read as a
     /// broken button.
     func checkNow() {
+        guard Self.isAvailable else { return }
         start()
         outcome = .checking
         sparkle.checkForUpdates()

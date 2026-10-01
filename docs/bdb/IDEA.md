@@ -21,6 +21,17 @@ Goal: one repo with both ports, extended into the BDB desktop companion for AOS 
 
 In short: agent stats and usage counter + AOS/AO desktop plugin with update hints + light monitoring of cloud services and servers.
 
+## Sidebar mockup (from the screenshot)
+Hover panel next to the existing Codenotch gauges (Claude 19 %, Antigravity 3 %, Codex, Cursor 0.5 %):
+
+- **AO Orchestrator / BDB Endpoints** block
+  - one row per AO project: `AO Project ID — 0/100 % done of tasks`, with a green `Merge ready` badge when a PR is ready
+  - `BDB LLM Endpoint — 0/100 % Usage / GLM 5.3 flash`
+  - `BDB LLM Endpoint — 0/100 % Usage / Seedance 2.0`
+  - `BDB Creator Extension — 0/100 % Usage / Weekly`
+
+So the panel mixes AO task progress per project with per-endpoint usage quotas from BDB cloud services.
+
 ## Research links
 - PowerToys Awake: https://github.com/MicrosoftDocs/windows-dev-docs/blob/docs/hub/powertoys/awake.md
 - caffeinate-windows: https://github.com/dincertekin/caffeinate-windows
@@ -32,7 +43,7 @@ In short: agent stats and usage counter + AOS/AO desktop plugin with update hint
 - Keep upstream MIT license and attribution. Upstream remote is `upstream`; sync regularly.
 - GitHub repo must be private (a GitHub fork of a public repo cannot be private, so push as a fresh private repo).
 - BDB CI: black #0a0a0a, white, accent purple #9b30c4; no mint/cyan.
-- Two reference screenshots from the original notes were not found in Downloads; add them here when available.
+- Reference mockup: `docs/bdb/mockup-sidebar-2026-10-01.png` (the second screenshot from the notes is irrelevant).
 
 ## Source
 Tim's original notes (German, 2026-10-01) are in `docs/bdb/notes-2026-10-01.de.md`.

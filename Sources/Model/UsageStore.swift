@@ -217,7 +217,7 @@ final class UsageStore: ObservableObject {
         providers: [UsageProvider],
         refreshInterval: TimeInterval = 15,
         busyRefreshInterval: TimeInterval = 30,
-        localRefreshInterval: TimeInterval = 1,
+        localRefreshInterval: TimeInterval = 3, // bdb-perf: was 1
         idleRefreshInterval: TimeInterval = 5 * 60,
         staleAfter: TimeInterval = 15 * 60,
         // Thirty times a normal pass, which is a second or two. High enough

@@ -24,7 +24,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     private var timer: Timer?
 
     init(roots: [URL] = AntigravityActivity.transcriptRoots,
-         interval: TimeInterval = 2,
+         interval: TimeInterval = 5, // bdb-perf: was 2
          staleAfter: TimeInterval = 45) {
         self.roots = roots
         self.interval = interval
@@ -32,7 +32,7 @@ final class AntigravityActivityMonitor: AgentActivityMonitor {
     }
 
     convenience init(profile: AntigravityProfile,
-                     interval: TimeInterval = 2,
+                     interval: TimeInterval = 5, // bdb-perf: was 2
                      staleAfter: TimeInterval = 45) {
         let roots = profile.slug == nil ? AntigravityActivity.transcriptRoots : [profile.brainDirectory]
         self.init(roots: roots, interval: interval, staleAfter: staleAfter)

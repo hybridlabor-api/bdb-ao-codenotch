@@ -128,7 +128,7 @@ final class CodexActivityMonitor: ObservableObject, AgentActivityMonitor {
         profile: CodexProfile = .default(),
         stateStore: URL? = nil,
         desktopStore: URL? = nil,
-        interval: TimeInterval = 2,
+        interval: TimeInterval = 5, // bdb-perf: was 2
         staleAfter: TimeInterval = 8
     ) {
         self.profile = profile

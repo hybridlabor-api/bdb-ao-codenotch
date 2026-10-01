@@ -43,7 +43,7 @@ final class CursorActivityMonitor: ObservableObject, AgentActivityMonitor {
     private var timer: Timer?
 
     init(store: URL = CursorCredentials.storeURL,
-         interval: TimeInterval = 2,
+         interval: TimeInterval = 5, // bdb-perf: was 2
          staleAfter: TimeInterval = 15 * 60) {
         self.store = store
         self.interval = interval

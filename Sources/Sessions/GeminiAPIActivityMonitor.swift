@@ -32,7 +32,7 @@ final class GeminiAPIActivityMonitor: AgentActivityMonitor {
     init(geminiRoot: URL = GeminiCLIUsage.sessionsRoot,
          opencodeDatabase: URL = OpenCodeGeminiActivity.database,
          hermesDatabase: URL = HermesGeminiUsage.database,
-         interval: TimeInterval = 2,
+         interval: TimeInterval = 5, // bdb-perf: was 2
          staleAfter: TimeInterval = 45) {
         self.geminiRoot = geminiRoot
         self.opencodeDatabase = opencodeDatabase

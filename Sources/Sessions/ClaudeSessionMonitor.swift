@@ -69,7 +69,7 @@ final class ClaudeSessionMonitor: ObservableObject, AgentActivityMonitor {
         directory: URL = URL(fileURLWithPath: NSHomeDirectory())
             .appendingPathComponent(".claude/sessions"),
         projects: URL? = nil,
-        livenessInterval: TimeInterval = 2
+        livenessInterval: TimeInterval = 5 // bdb-perf: was 2
     ) {
         self.directory = directory
         self.livenessInterval = livenessInterval

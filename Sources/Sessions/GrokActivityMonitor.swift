@@ -34,7 +34,7 @@ final class GrokActivityMonitor: ObservableObject, AgentActivityMonitor {
     init(
         activeURL: URL = GrokActivity.activeURL,
         sessionsRoot: URL = GrokActivity.sessionsRoot,
-        interval: TimeInterval = 2,
+        interval: TimeInterval = 5, // bdb-perf: was 2
         staleAfter: TimeInterval = 45
     ) {
         self.activeURL = activeURL

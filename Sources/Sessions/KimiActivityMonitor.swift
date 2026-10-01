@@ -26,7 +26,7 @@ final class KimiActivityMonitor: ObservableObject, AgentActivityMonitor {
 
     init(
         root: URL = KimiActivity.root,
-        interval: TimeInterval = 2,
+        interval: TimeInterval = 5, // bdb-perf: was 2
         staleAfter: TimeInterval = 90
     ) {
         self.root = root

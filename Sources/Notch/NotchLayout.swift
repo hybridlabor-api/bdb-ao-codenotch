@@ -246,6 +246,10 @@ enum NotchLayout {
         ofSize: Design.fontSize(capPixels: 18), weight: .regular
     )
     static let cardBodyLineHeight: CGFloat = lineHeight(cardBodyFont)
+    /// Second line of a count row; keep in step with `Typography.cardNote`.
+    static let cardNoteLineHeight: CGFloat = lineHeight(
+        NSFont.systemFont(ofSize: Design.fontSize(capPixels: 15), weight: .regular))
+    static let noteGap = Design.px(4)
 
     /// How wide a line of body text is inside the card.
     static var cardTextWidth: CGFloat { cardWidth - 2 * cardPadding }
@@ -402,6 +406,7 @@ enum NotchLayout {
                            localModelName: String? = nil, showsLocalPerformance: Bool = false,
                            localLedgerRows: Int = 0,
                            compactRowCount: Int = 0,
+                           noteRowCount: Int = 0,
                            showsDeepSeekPricing: Bool = true,
                            costRows: Int = 0) -> CGFloat {
         let header = max(glyphSize, cardTitleLineHeight)
@@ -434,6 +439,7 @@ enum NotchLayout {
                 + CGFloat(fullCount) * fullBlock
                 + CGFloat(moneyCount) * moneyBlock
                 + CGFloat(compactRowCount) * compactBlock
+                + CGFloat(noteRowCount) * (cardNoteLineHeight + noteGap)
                 + CGFloat(windowCount - 1) * blockSpacing
             if groupCount > 0 {
                 // Each group adds a title line, spacing (12), and 16px vertical padding inside the box

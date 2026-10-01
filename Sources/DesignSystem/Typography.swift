@@ -25,4 +25,7 @@ enum Typography {
 
     /// "Current session", "73% Used", "Resets in 51 min". Cap height 18px.
     static let cardBody = Font.system(size: Design.fontSize(capPixels: 18), weight: .regular)
+
+    /// Second line under a row: smaller than the body, secondary ink.
+    static let cardNote = Font.system(size: Design.fontSize(capPixels: 15), weight: .regular)
 }

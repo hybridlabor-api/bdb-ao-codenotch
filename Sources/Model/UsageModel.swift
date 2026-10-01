@@ -135,12 +135,15 @@ struct LimitWindow: Identifiable, Codable, Equatable {
     let duration: TimeInterval?
     var bandOverride: UsageBand? = nil
     var prefersUsedText: Bool = false
+    /// Smaller second line under a count row (bdb versions); accent-coloured when `noteAccent`.
+    var note: String? = nil
+    var noteAccent: Bool = false
 
     init(id: String, group: String? = nil, label: String, usedFraction: Double? = nil,
          remaining: Int? = nil, used: Int? = nil, usedText: String? = nil, detail: String? = nil,
          money: UsageMoneyBreakdown? = nil, resetsAt: Date? = nil,
          duration: TimeInterval? = nil, bandOverride: UsageBand? = nil,
-         prefersUsedText: Bool = false) {
+         prefersUsedText: Bool = false, note: String? = nil, noteAccent: Bool = false) {
         self.id = id
         self.group = group
         self.label = label
@@ -154,10 +157,12 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         self.duration = duration
         self.bandOverride = bandOverride
         self.prefersUsedText = prefersUsedText
+        self.note = note
+        self.noteAccent = noteAccent
     }
 
     enum CodingKeys: String, CodingKey {
-        case id, group, label, usedFraction, remaining, used, detail, money, usedText, resetsAt, duration, bandOverride, prefersUsedText
+        case id, group, label, usedFraction, remaining, used, detail, money, usedText, resetsAt, duration, bandOverride, prefersUsedText, note, noteAccent
     }
 
     init(from decoder: Decoder) throws {
@@ -175,6 +180,8 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         self.duration = try container.decodeIfPresent(TimeInterval.self, forKey: .duration)
         self.bandOverride = try container.decodeIfPresent(UsageBand.self, forKey: .bandOverride)
         self.prefersUsedText = try container.decodeIfPresent(Bool.self, forKey: .prefersUsedText) ?? false
+        self.note = try container.decodeIfPresent(String.self, forKey: .note)
+        self.noteAccent = try container.decodeIfPresent(Bool.self, forKey: .noteAccent) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -194,6 +201,8 @@ struct LimitWindow: Identifiable, Codable, Equatable {
         if prefersUsedText {
             try container.encode(prefersUsedText, forKey: .prefersUsedText)
         }
+        try container.encodeIfPresent(note, forKey: .note)
+        if noteAccent { try container.encode(noteAccent, forKey: .noteAccent) }
     }
 
     /// Whether this is a rolling five-hour window — the limit a coding session
@@ -454,6 +463,9 @@ struct ProviderSnapshot: Identifiable, Equatable {
 
     /// How many windows are count-only (no fraction, no bar) — they render as
     /// single-line rows and take less vertical space than full bar rows.
+    /// Count rows that carry a second line; each is taller than a plain one.
+    var noteRowCount: Int { windows.filter { $0.note != nil && $0.usedFraction == nil }.count }
+
     var compactRowCount: Int {
         windows.filter { $0.usedFraction == nil && ($0.used != nil || $0.detail != nil) }.count
     }

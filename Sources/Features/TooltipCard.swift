@@ -473,7 +473,15 @@ private struct LimitWindowRow: View {
         if let money = window.money {
             MoneyBreakdownView(title: window.label, money: money, fidelity: fidelity)
         } else if isCountRow {
-            SplitRow(leading: window.label, trailing: window.detail ?? window.usedText ?? "\(window.used ?? 0)")
+            VStack(alignment: .leading, spacing: NotchLayout.noteGap) {
+                SplitRow(leading: window.label, trailing: window.detail ?? window.usedText ?? "\(window.used ?? 0)")
+                if let note = window.note {
+                    Text(note)
+                        .font(Typography.cardNote)
+                        .foregroundStyle(window.noteAccent ? accentColor : secondaryInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
         } else {
             VStack(alignment: .leading, spacing: 0) {
                 SplitRow(leading: window.label, trailing: resetText)
@@ -1129,7 +1137,7 @@ struct TooltipCard: View {
             localModelName: snapshot.localModel?.name,
             showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
-            compactRowCount: snapshot.compactRowCount,
+            compactRowCount: snapshot.compactRowCount, noteRowCount: snapshot.noteRowCount,
             showsDeepSeekPricing: deepSeekPricingEnabled,
             costRows: costRows
         )

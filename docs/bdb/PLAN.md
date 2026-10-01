@@ -47,7 +47,7 @@ Status date 2026-10-01. Baseline: upstream `f295939` (1.20.0). **Nothing below h
 
 ## P2 — AOS / AO installed version + npm update indicator
 
-**Behaviour**: show installed AOS version and AO version; show a purple dot/badge when the npm registry has a newer one. Packages: `@hybridlabor-api/aos`, `@hybridlabor-api/bdb-agent-orchestrator`. AO line only if AO is installed.
+**Behaviour**: show installed AOS version and AO version; show a green dot/badge when the npm registry has a newer one. Packages: `@hybridlabor-api/aos`, `@hybridlabor-api/bdb-agent-orchestrator`. AO line only if AO is installed.
 
 **Design**
 - Installed version (decided): read `/opt/homebrew/lib/node_modules/@hybridlabor-api/aos/package.json` (`version`). **Never run `aos`** — `aos --version` runs the full installer and rewrites harness configs (known issue). Read versions from files instead: the npm global `package.json` (`$(npm root -g)/@hybridlabor-api/aos/package.json`, resolved without executing aos, e.g. via known prefixes such as `/opt/homebrew/lib/node_modules`), AO likewise from `/opt/homebrew/lib/node_modules/@hybridlabor-api/bdb-agent-orchestrator/package.json` (path assumed from the AOS pattern, UNVERIFIED). Intel/other prefixes (`npm root -g`) as fallback; Windows path is `%APPDATA%\npm\node_modules\...` (UNVERIFIED).

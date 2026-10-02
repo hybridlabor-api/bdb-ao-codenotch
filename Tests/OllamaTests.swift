@@ -691,7 +691,8 @@ final class OllamaLifecycleTests: XCTestCase {
 
     func testLocalTimerDetectsAndRemovesModelsWithoutManualRefresh() async throws {
         let local = RuntimeStub(), cloud = QuotaStub()
-        let store = UsageStore(providers: [cloud, local], archive: UsageArchive(defaults: isolatedDefaults()))
+        // Pinned to upstream's 1s: the fork default is 3s (bdb-perf), longer than the 2.5s waits below.
+        let store = UsageStore(providers: [cloud, local], localRefreshInterval: 1, archive: UsageArchive(defaults: isolatedDefaults()))
         store.start()
         defer { store.stop() }
         await started(local)

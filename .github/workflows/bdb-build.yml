@@ -107,6 +107,12 @@ jobs:
           DMG="release/BDB-AO-Codenotch-$VERSION.dmg"
           mv build/bdb/BDB-AO-Codenotch.dmg "$DMG"
           hdiutil verify "$DMG"
+          MNT=$(mktemp -d)
+          hdiutil attach -readonly -nobrowse -mountpoint "$MNT" "$DMG" >/dev/null
+          for f in LICENSE.txt THIRD_PARTY_LICENSES.txt "BDB AO Codenotch.app/Contents/Resources/LICENSE.txt"; do
+            [ -s "$MNT/$f" ] || { echo "::error::dmg is missing $f"; exit 1; }
+          done
+          hdiutil detach "$MNT" >/dev/null
           (cd release && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
           cat "$DMG.sha256"
 

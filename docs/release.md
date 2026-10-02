@@ -1,6 +1,6 @@
 # Releasing BDB AO Codenotch
 
-Source stays in the private repo `hybridlabor-api/bdb-ao-codenotch`. Binaries are published to the public, releases-only repo `hybridlabor-api/bdb-ao-codenotch-releases`.
+Source and binaries live in the public repo `hybridlabor-api/bdb-ao-codenotch`. Releases are published on its own Releases page.
 
 ## Cut a release
 
@@ -9,7 +9,7 @@ Source stays in the private repo `hybridlabor-api/bdb-ao-codenotch`. Binaries ar
 3. `.github/workflows/bdb-build.yml` runs the build and test jobs, then the `release` job (tag pushes of this repo only, never pull requests). It:
    - builds the app and dmg with `make bdb-build` (SwiftPM, ad-hoc signed),
    - names it `BDB-AO-Codenotch-<version>.dmg` (version = tag without `v`), runs `hdiutil verify`, writes `BDB-AO-Codenotch-<version>.dmg.sha256` (`shasum -a 256`),
-   - creates a GitHub release in the releases repo with both files. The notes contain only the version and the SHA-256, no source.
+   - creates the GitHub release in this repo with both files. The notes contain only the version and the SHA-256, no source.
 
 A warning is logged if the tag differs from `MARKETING_VERSION` (the app would report the other version).
 
@@ -20,7 +20,7 @@ The same tag also ships the Windows installer into the same release:
 - `windows-installer` (reusable `bdb-windows-installer.yml`, runs in parallel to the macOS jobs) builds the hook, then the NSIS installer with `npx @tauri-apps/cli@2.11.4 build --config tauri.bundle.conf.json`, and smoke-tests it: silent install (`/S`), `codenotch.exe doctor`, silent uninstall.
 - `windows-release` `needs` the dmg `release` job, which creates the GitHub release. It renames the installer to `Codenotch-Setup-<version>.exe` (version = tag without `v`), writes `Codenotch-Setup-<version>.exe.sha256` (`sha256sum`) and runs `gh release upload --clobber` on the existing release. Because it needs the dmg job there is no create race; a failed macOS build means no Windows asset either.
 - A warning is logged if the tag differs from `version` in `windows/codenotch/tauri.conf.json` (the Windows app's version source, also in `windows/codenotch/Cargo.toml`; keep both in step with `MARKETING_VERSION`).
-- Uses only `RELEASES_REPO_TOKEN`, tag pushes of this repo only, `permissions: contents: read`.
+- Uses the default `GITHUB_TOKEN`; tag pushes of this repo only. Workflow-level `permissions: contents: read`, `contents: write` only on the two publishing jobs.
 
 Assets per release: `BDB-AO-Codenotch-<version>.dmg`, `.dmg.sha256`, `Codenotch-Setup-<version>.exe`, `.exe.sha256`.
 
@@ -35,16 +35,13 @@ From `tauri.conf.json` and Tauri's stock NSIS template (no custom template, defa
 - Uninstall key `HKCU\Software\Microsoft\Windows\CurrentVersion\Uninstall\Codenotch`; `DisplayVersion` is the installed version, `UninstallString` points at `uninstall.exe`.
 - Silent install `Codenotch-Setup-<version>.exe /S`, silent uninstall `uninstall.exe /S`. Both are per user and need no administrator rights.
 
-## Required setup (one time, by the repo owner)
+## Setup
 
-- Create the **public** repo `hybridlabor-api/bdb-ao-codenotch-releases` with at least one commit on its default branch (for example a README), so `gh release create` can create the tag.
 - Optional: `TAURI_SIGNING_PRIVATE_KEY` (and `_PASSWORD`) switch on updater artifacts for the Windows build, exactly as upstream. Without them the installer is still built. No update feed is published: upstream's updater endpoint and public key are placeholders in `tauri.conf.json`.
-- Create a fine-grained personal access token with **Contents: Read and write** on **only** `hybridlabor-api/bdb-ao-codenotch-releases`.
-- Store it as the repository secret **`RELEASES_REPO_TOKEN`** in `hybridlabor-api/bdb-ao-codenotch`. The workflow keeps `permissions: contents: read`; the token is used only by the publish step.
 
 ## Download
 
-Users download the dmg from the Releases page of `hybridlabor-api/bdb-ao-codenotch-releases`. Check it against the `.sha256` asset: `shasum -a 256 -c BDB-AO-Codenotch-<version>.dmg.sha256`.
+Users download the dmg or `Codenotch-Setup-<version>.exe` from the Releases page of `hybridlabor-api/bdb-ao-codenotch`. Check it against the `.sha256` asset: `shasum -a 256 -c BDB-AO-Codenotch-<version>.dmg.sha256` (macOS) or `sha256sum -c Codenotch-Setup-<version>.exe.sha256` (Linux) or `Get-FileHash` (Windows).
 
 ## Signing status
 

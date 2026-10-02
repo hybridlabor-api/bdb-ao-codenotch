@@ -48,6 +48,8 @@ iconutil -c icns Brand/AppIcon.iconset -o "$APP/Contents/Resources/AppIcon.icns"
 
 # Credits for the About panel; the MIT notice travels with the app.
 cp LICENSE "$APP/Contents/Resources/LICENSE-Codenotch-MIT.txt"
+cp LICENSE "$APP/Contents/Resources/LICENSE.txt"
+python3 Scripts/bdb-third-party.py "$APP/Contents/Resources/THIRD_PARTY_LICENSES.txt"
 cat > "$APP/Contents/Resources/Credits.rtf" <<'RTF'
 {\rtf1\ansi\deff0{\fonttbl{\f0 Helvetica;}}\f0\fs20
 BDB AO Codenotch is a fork of Codenotch by vinzdg (https://github.com/vinzdg/codenotch), MIT licence. The licence text is in LICENSE-Codenotch-MIT.txt inside this app.\par
@@ -71,7 +73,10 @@ codesign --force --deep -s - "$APP/Contents/Frameworks/Sparkle.framework"
 codesign --force --deep -s - "$APP"
 codesign --verify --deep --strict "$APP"
 
-mkdir -p "$OUT/stage"; cp -R "$APP" "$OUT/stage/"; ln -s /Applications "$OUT/stage/Applications"
+mkdir -p "$OUT/stage"; cp -R "$APP" "$OUT/stage/"
+cp LICENSE "$OUT/stage/LICENSE.txt"
+cp "$APP/Contents/Resources/THIRD_PARTY_LICENSES.txt" "$OUT/stage/"
+ln -s /Applications "$OUT/stage/Applications"
 hdiutil create -volname "$NAME" -srcfolder "$OUT/stage" -ov -format UDZO "$DMG"
 rm -rf "$OUT/stage"
 echo "App: $APP"; echo "DMG: $DMG"

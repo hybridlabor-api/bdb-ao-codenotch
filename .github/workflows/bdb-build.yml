@@ -3,7 +3,7 @@ name: BDB Build
 # BDB fork only. Upstream's ci/package/windows workflows are guarded by
 # `github.repository == 'vinzdg/codenotch'` and stay skipped here; this file is
 # the fork's build. Ad-hoc signing, no notarisation. The only secret is
-# RELEASES_REPO_TOKEN, used by the tag-only `release` job. See docs/release.md.
+# RELEASES_REPO_TOKEN, used by the tag-only `release` and `windows-release` jobs. See docs/release.md.
 on:
   push:
     branches: [main]
@@ -123,6 +123,55 @@ jobs:
             --notes-file release/notes.md \
             "release/BDB-AO-Codenotch-$VERSION.dmg" \
             "release/BDB-AO-Codenotch-$VERSION.dmg.sha256"
+
+  windows-installer:
+    if: github.repository == 'hybridlabor-api/bdb-ao-codenotch' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Windows installer
+    uses: ./.github/workflows/bdb-windows-installer.yml
+    secrets: inherit
+
+  windows-release:
+    # Needs the dmg `release` job: it creates the GitHub release, this one only
+    # adds to it. No ordering race, and no Windows asset on a failed macOS build.
+    if: github.repository == 'hybridlabor-api/bdb-ao-codenotch' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Attach Windows installer
+    needs: [release, windows-installer]
+    runs-on: ubuntu-latest
+    env:
+      RELEASES_REPO: hybridlabor-api/bdb-ao-codenotch-releases
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: Codenotch-Setup
+          path: dl
+
+      - name: Name installer and checksum
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          PROJ=$(python3 -c 'import json;print(json.load(open("windows/codenotch/tauri.conf.json"))["version"])')
+          [ "$PROJ" = "$VERSION" ] || echo "::warning::tag $TAG differs from windows/codenotch/tauri.conf.json version $PROJ"
+          mkdir release
+          EXE="Codenotch-Setup-$VERSION.exe"
+          mv dl/Codenotch-Setup.exe "release/$EXE"
+          (cd release && sha256sum "$EXE" > "$EXE.sha256")
+          cat "release/$EXE.sha256"
+
+      - name: Upload to releases repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [ -n "$GH_TOKEN" ] || { echo "::error::secret RELEASES_REPO_TOKEN is not set"; exit 1; }
+          VERSION="${TAG#v}"
+          gh release upload "$TAG" --repo "$RELEASES_REPO" --clobber \
+            "release/Codenotch-Setup-$VERSION.exe" \
+            "release/Codenotch-Setup-$VERSION.exe.sha256"
 
   windows:
     if: github.repository != 'vinzdg/codenotch'

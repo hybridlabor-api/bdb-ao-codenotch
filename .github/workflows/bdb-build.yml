@@ -2,10 +2,12 @@ name: BDB Build
 
 # BDB fork only. Upstream's ci/package/windows workflows are guarded by
 # `github.repository == 'vinzdg/codenotch'` and stay skipped here; this file is
-# the fork's build. No secrets, ad-hoc signing, no notarisation, no release.
+# the fork's build. Ad-hoc signing, no notarisation. The only secret is
+# RELEASES_REPO_TOKEN, used by the tag-only `release` job. See docs/release.md.
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -71,6 +73,56 @@ jobs:
           name: Codenotch-swiftpm-dmg
           path: build/bdb/BDB-AO-Codenotch.dmg
           if-no-files-found: error
+
+  release:
+    # Tag pushes of this repo only, never pull requests or forks.
+    if: github.repository == 'hybridlabor-api/bdb-ao-codenotch' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Publish release (public releases repo)
+    needs: [macos, swiftpm]
+    runs-on: macos-26
+    env:
+      RELEASES_REPO: hybridlabor-api/bdb-ao-codenotch-releases
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build app and dmg
+        run: make bdb-build
+
+      # TODO(apple-certs): signing and notarisation, not implemented. Enable
+      # only once Developer ID certificates exist, guarded by the APPLE_CERT
+      # secret, e.g. `if: ${{ secrets.APPLE_CERT != '' }}` (needs the secret
+      # exposed via env: first). Sign the .app, sign + notarize + staple the dmg
+      # before the checksum step below. Until then the app is ad-hoc signed.
+
+      - name: Name dmg and checksum
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          PROJ=$(awk -F'"' '/MARKETING_VERSION:/ {print $2}' project.yml)
+          [ "$PROJ" = "$VERSION" ] || echo "::warning::tag $TAG differs from project.yml MARKETING_VERSION $PROJ"
+          mkdir release
+          DMG="release/BDB-AO-Codenotch-$VERSION.dmg"
+          mv build/bdb/BDB-AO-Codenotch.dmg "$DMG"
+          hdiutil verify "$DMG"
+          (cd release && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
+          cat "$DMG.sha256"
+
+      - name: Publish to releases repo
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          [ -n "$GH_TOKEN" ] || { echo "::error::secret RELEASES_REPO_TOKEN is not set"; exit 1; }
+          VERSION="${TAG#v}"
+          SUM=$(cut -d' ' -f1 "release/BDB-AO-Codenotch-$VERSION.dmg.sha256")
+          printf 'BDB AO Codenotch %s\n\nSHA-256: `%s`\n' "$VERSION" "$SUM" > release/notes.md
+          gh release create "$TAG" --repo "$RELEASES_REPO" --title "$TAG" \
+            --notes-file release/notes.md \
+            "release/BDB-AO-Codenotch-$VERSION.dmg" \
+            "release/BDB-AO-Codenotch-$VERSION.dmg.sha256"
 
   windows:
     if: github.repository != 'vinzdg/codenotch'

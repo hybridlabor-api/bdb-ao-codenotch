@@ -56,4 +56,4 @@ xattr -dr com.apple.quarantine "/Applications/BDB AO Codenotch.app"
 
 The workflow has a marked, disabled placeholder (to be guarded by an `APPLE_CERT` secret) where signing and notarisation will go. It is not implemented yet.
 
-Windows installers are unsigned (no Authenticode certificate). On first run SmartScreen shows "Windows protected your PC": choose **More info**, then **Run anyway**. The installer installs for the current user only, without administrator rights; a silent install by AOS (`/S`) behaves the same and SmartScreen does not prompt for files started from a script, but a manually downloaded file may carry the web mark.
+Windows installers are unsigned (no Authenticode certificate). On first run SmartScreen shows "Windows protected your PC": choose **More info**, then **Run anyway**. The installer installs for the current user only, without administrator rights; a silent install by AOS (`/S`) behaves the same.

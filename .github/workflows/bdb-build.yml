@@ -2,8 +2,9 @@ name: BDB Build
 
 # BDB fork only. Upstream's ci/package/windows workflows are guarded by
 # `github.repository == 'vinzdg/codenotch'` and stay skipped here; this file is
-# the fork's build. Ad-hoc signing, no notarisation. The only secret is
-# RELEASES_REPO_TOKEN, used by the tag-only `release` and `windows-release` jobs. See docs/release.md.
+# the fork's build. Ad-hoc signing, no notarisation. Releases use
+# the default GITHUB_TOKEN, with contents: write only on the tag-only `release`
+# and `windows-release` jobs. See docs/release.md.
 on:
   push:
     branches: [main]
@@ -77,11 +78,11 @@ jobs:
   release:
     # Tag pushes of this repo only, never pull requests or forks.
     if: github.repository == 'hybridlabor-api/bdb-ao-codenotch' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-    name: Publish release (public releases repo)
+    name: Publish release
     needs: [macos, swiftpm]
     runs-on: macos-26
-    env:
-      RELEASES_REPO: hybridlabor-api/bdb-ao-codenotch-releases
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -109,17 +110,16 @@ jobs:
           (cd release && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
           cat "$DMG.sha256"
 
-      - name: Publish to releases repo
+      - name: Publish release
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          [ -n "$GH_TOKEN" ] || { echo "::error::secret RELEASES_REPO_TOKEN is not set"; exit 1; }
           VERSION="${TAG#v}"
           SUM=$(cut -d' ' -f1 "release/BDB-AO-Codenotch-$VERSION.dmg.sha256")
           printf 'BDB AO Codenotch %s\n\nSHA-256: `%s`\n' "$VERSION" "$SUM" > release/notes.md
-          gh release create "$TAG" --repo "$RELEASES_REPO" --title "$TAG" \
+          gh release create "$TAG" --title "$TAG" \
             --notes-file release/notes.md \
             "release/BDB-AO-Codenotch-$VERSION.dmg" \
             "release/BDB-AO-Codenotch-$VERSION.dmg.sha256"
@@ -137,8 +137,8 @@ jobs:
     name: Attach Windows installer
     needs: [release, windows-installer]
     runs-on: ubuntu-latest
-    env:
-      RELEASES_REPO: hybridlabor-api/bdb-ao-codenotch-releases
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -161,15 +161,14 @@ jobs:
           (cd release && sha256sum "$EXE" > "$EXE.sha256")
           cat "release/$EXE.sha256"
 
-      - name: Upload to releases repo
+      - name: Upload to release
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_REPO_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
           set -euo pipefail
-          [ -n "$GH_TOKEN" ] || { echo "::error::secret RELEASES_REPO_TOKEN is not set"; exit 1; }
           VERSION="${TAG#v}"
-          gh release upload "$TAG" --repo "$RELEASES_REPO" --clobber \
+          gh release upload "$TAG" --clobber \
             "release/Codenotch-Setup-$VERSION.exe" \
             "release/Codenotch-Setup-$VERSION.exe.sha256"
 

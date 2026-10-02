@@ -1,7 +1,14 @@
 {
   "bundle": {
     "resources": {
-      "../target/hook/release/codenotch-hook.exe": "codenotch-hook.exe"
+      "../target/hook/release/codenotch-hook.exe": "codenotch-hook.exe",
+      "licenses/LICENSE.txt": "LICENSE.txt",
+      "licenses/LICENSE-windows.txt": "LICENSE-windows.txt"
+    },
+    "windows": {
+      "nsis": {
+        "licenseFile": "licenses/installer-license.txt"
+      }
     }
   }
 }

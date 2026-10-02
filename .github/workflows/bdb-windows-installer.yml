@@ -35,6 +35,18 @@ jobs:
           RUSTFLAGS: -C target-feature=+crt-static
         run: cargo build --release --locked -p codenotch-hook --target-dir target/hook
 
+      # MIT: keep both notices (root = Codenotch, windows/ = the Windows port)
+      # in the install dir; the installer's licence page shows both.
+      - name: Collect licence files
+        run: |
+          $d = 'codenotch/licenses'
+          New-Item -ItemType Directory -Force $d | Out-Null
+          Copy-Item ../LICENSE "$d/LICENSE.txt"
+          Copy-Item LICENSE "$d/LICENSE-windows.txt"
+          $sep = "`n`n" + ('=' * 72) + "`n`n"
+          ((Get-Content "$d/LICENSE.txt" -Raw), (Get-Content "$d/LICENSE-windows.txt" -Raw)) -join $sep |
+            Set-Content "$d/installer-license.txt" -Encoding utf8
+
       # Updater artifacts without a key are a hard bundler error, so they are
       # enabled only when the optional secret exists.
       - name: Can this build be signed?
@@ -75,7 +87,7 @@ jobs:
             Select-Object -First 1
           if (-not $hook) { throw 'the installer did not install codenotch-hook.exe' }
           $dir = $hook.DirectoryName
-          foreach ($f in 'codenotch.exe', 'uninstall.exe') {
+          foreach ($f in 'codenotch.exe', 'uninstall.exe', 'LICENSE.txt', 'LICENSE-windows.txt') {
             if (-not (Test-Path (Join-Path $dir $f))) { throw "$f is not beside codenotch-hook.exe in $dir" }
           }
           Start-Process -FilePath (Join-Path $dir 'codenotch.exe') -ArgumentList 'doctor' `

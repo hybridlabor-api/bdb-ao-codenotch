@@ -5,10 +5,6 @@
       "licenses/LICENSE.txt": "LICENSE.txt",
       "licenses/LICENSE-windows.txt": "LICENSE-windows.txt"
     },
-    "windows": {
-      "nsis": {
-        "licenseFile": "licenses/installer-license.txt"
-      }
-    }
+    "licenseFile": "licenses/installer-license.txt"
   }
 }

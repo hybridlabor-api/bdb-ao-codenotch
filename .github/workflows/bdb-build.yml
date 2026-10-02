@@ -2,10 +2,13 @@ name: BDB Build
 
 # BDB fork only. Upstream's ci/package/windows workflows are guarded by
 # `github.repository == 'vinzdg/codenotch'` and stay skipped here; this file is
-# the fork's build. No secrets, ad-hoc signing, no notarisation, no release.
+# the fork's build. Ad-hoc signing, no notarisation. Releases use
+# the default GITHUB_TOKEN, with contents: write only on the tag-only `release`
+# and `windows-release` jobs. See docs/release.md.
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
   workflow_dispatch:
 
@@ -71,6 +74,109 @@ jobs:
           name: Codenotch-swiftpm-dmg
           path: build/bdb/BDB-AO-Codenotch.dmg
           if-no-files-found: error
+
+  release:
+    # Tag pushes of this repo only, never pull requests or forks.
+    if: github.repository == 'hybridlabor-api/bdb-ao-codenotch' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Publish release
+    needs: [macos, swiftpm]
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build app and dmg
+        run: make bdb-build
+
+      # TODO(apple-certs): signing and notarisation, not implemented. Enable
+      # only once Developer ID certificates exist, guarded by the APPLE_CERT
+      # secret, e.g. `if: ${{ secrets.APPLE_CERT != '' }}` (needs the secret
+      # exposed via env: first). Sign the .app, sign + notarize + staple the dmg
+      # before the checksum step below. Until then the app is ad-hoc signed.
+
+      - name: Name dmg and checksum
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          PROJ=$(awk -F'"' '/MARKETING_VERSION:/ {print $2}' project.yml)
+          [ "$PROJ" = "$VERSION" ] || echo "::warning::tag $TAG differs from project.yml MARKETING_VERSION $PROJ"
+          mkdir release
+          DMG="release/BDB-AO-Codenotch-$VERSION.dmg"
+          mv build/bdb/BDB-AO-Codenotch.dmg "$DMG"
+          hdiutil verify "$DMG"
+          MNT=$(mktemp -d)
+          hdiutil attach -readonly -nobrowse -mountpoint "$MNT" "$DMG" >/dev/null
+          for f in LICENSE.txt THIRD_PARTY_LICENSES.txt "BDB AO Codenotch.app/Contents/Resources/LICENSE.txt"; do
+            [ -s "$MNT/$f" ] || { echo "::error::dmg is missing $f"; exit 1; }
+          done
+          hdiutil detach "$MNT" >/dev/null
+          (cd release && shasum -a 256 "$(basename "$DMG")" > "$(basename "$DMG").sha256")
+          cat "$DMG.sha256"
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          SUM=$(cut -d' ' -f1 "release/BDB-AO-Codenotch-$VERSION.dmg.sha256")
+          printf 'BDB AO Codenotch %s\n\nSHA-256: `%s`\n' "$VERSION" "$SUM" > release/notes.md
+          gh release create "$TAG" --title "$TAG" \
+            --notes-file release/notes.md \
+            "release/BDB-AO-Codenotch-$VERSION.dmg" \
+            "release/BDB-AO-Codenotch-$VERSION.dmg.sha256"
+
+  windows-installer:
+    if: github.repository == 'hybridlabor-api/bdb-ao-codenotch' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Windows installer
+    uses: ./.github/workflows/bdb-windows-installer.yml
+    secrets: inherit
+
+  windows-release:
+    # Needs the dmg `release` job: it creates the GitHub release, this one only
+    # adds to it. No ordering race, and no Windows asset on a failed macOS build.
+    if: github.repository == 'hybridlabor-api/bdb-ao-codenotch' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    name: Attach Windows installer
+    needs: [release, windows-installer]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: Codenotch-Setup
+          path: dl
+
+      - name: Name installer and checksum
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          PROJ=$(python3 -c 'import json;print(json.load(open("windows/codenotch/tauri.conf.json"))["version"])')
+          [ "$PROJ" = "$VERSION" ] || echo "::warning::tag $TAG differs from windows/codenotch/tauri.conf.json version $PROJ"
+          mkdir release
+          EXE="Codenotch-Setup-$VERSION.exe"
+          mv dl/Codenotch-Setup.exe "release/$EXE"
+          (cd release && sha256sum "$EXE" > "$EXE.sha256")
+          cat "release/$EXE.sha256"
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          VERSION="${TAG#v}"
+          gh release upload "$TAG" --clobber \
+            "release/Codenotch-Setup-$VERSION.exe" \
+            "release/Codenotch-Setup-$VERSION.exe.sha256"
 
   windows:
     if: github.repository != 'vinzdg/codenotch'

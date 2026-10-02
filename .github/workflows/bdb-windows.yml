@@ -1,0 +1,28 @@
+name: BDB Windows
+
+# Proves the installer in this fork before a tag. No upload, no secrets
+# beyond the optional signing key. Releases run from bdb-build.yml.
+on:
+  pull_request:
+    paths:
+      - 'windows/**'
+      - '.github/workflows/bdb-windows*.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'windows/**'
+      - '.github/workflows/bdb-windows*.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bdb-windows-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  installer:
+    if: github.repository != 'vinzdg/codenotch'
+    uses: ./.github/workflows/bdb-windows-installer.yml
+    secrets: inherit

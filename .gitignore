@@ -10,3 +10,5 @@ xcuserdata/
 .agents/
 .forgeguard/
 .build/
+.claude/
+production_artifacts/

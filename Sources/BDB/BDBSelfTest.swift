@@ -101,8 +101,19 @@ enum BDBSelfTest {
             let m = MainActor.assumeIsolated { BDBPopoverFit.measure(rows: n, pngDir: ProcessInfo.processInfo.environment["BDB_POPOVER_PNG_DIR"]) }
             print("     rows=\(n) cardHeight=\(m.card) fitting=\(m.fitting)")
             check(m.card >= m.fitting - 0.5, "popover fits \(n) agent rows (no clipping)")
-            check(m.card <= m.fitting + 24, "popover has no excess slack at \(n) rows")
+            check(m.card <= m.fitting + 6, "popover has no excess slack at \(n) rows")
         }
+
+        for (name, groups) in [("codex-2groups", 2), ("codex-0groups", 0)] {
+            let m = MainActor.assumeIsolated { BDBPopoverFit.measure(snapshot: BDBPopoverFit.codexSnapshot(groups: groups), pngDir: nil) }
+            print("     \(name) cardHeight=\(m.card) fitting=\(m.fitting)")
+            check(m.card >= m.fitting - 0.5, "\(name) fits (no clipping)")
+            check(m.card <= m.fitting + 6, "\(name) has no excess slack")
+        }
+        let codexCard = MainActor.assumeIsolated { BDBPopoverFit.cardHeight(BDBPopoverFit.codexSnapshot(groups: 2)) }
+        let maxCard = NotchLayout.maxCardHeight(sessionCap: NotchLayout.defaultSessionCap)
+        print("     maxCardHeight=\(maxCard) codex-2groups card=\(codexCard)")
+        check(maxCard >= codexCard, "maxCardHeight covers a Codex card with two groups")
 
         print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         return failures == 0 ? 0 : 1
@@ -124,6 +135,21 @@ enum BDBPopoverFit {
         return s
     }
 
+    /// Codex shape: 5h + weekly, then Spark and Code review as grouped 5h + weekly pairs.
+    static func codexSnapshot(groups: Int) -> ProviderSnapshot {
+        var s = BDBSnapshot.make(BDBState())
+        s.windows = [LimitWindow(id: "primary", label: "5h", usedFraction: 0.3, resetsAt: Date().addingTimeInterval(7200), duration: 18000),
+                     LimitWindow(id: "secondary", label: "Weekly", usedFraction: 0.5, resetsAt: Date().addingTimeInterval(259200), duration: 604800)]
+        if groups >= 1 {
+            s.windows += [LimitWindow(id: "spark", group: "Spark", label: "5h", usedFraction: 0.1, resetsAt: Date().addingTimeInterval(7200), duration: 18000),
+                          LimitWindow(id: "spark-secondary", group: "Spark", label: "Weekly", usedFraction: 0.2, resetsAt: Date().addingTimeInterval(259200), duration: 604800)]
+        }
+        if groups >= 2 {
+            s.windows.append(LimitWindow(id: "code-review", group: "Code review", label: "Weekly", usedFraction: 0.4, resetsAt: Date().addingTimeInterval(259200), duration: 604800))
+        }
+        return s
+    }
+
     static func cardHeight(_ s: ProviderSnapshot) -> CGFloat {
         NotchLayout.cardHeight(windowCount: s.windows.count, groupCount: s.windowGroupCount,
                                compactRowCount: s.compactRowCount, noteRowCount: s.noteRowCount,
@@ -131,7 +157,10 @@ enum BDBPopoverFit {
     }
 
     static func measure(rows n: Int, pngDir: String?) -> (card: CGFloat, fitting: CGFloat) {
-        let s = snapshot(agentRows: n)
+        measure(snapshot: snapshot(agentRows: n), pngDir: pngDir, name: "\(n)rows")
+    }
+
+    static func measure(snapshot s: ProviderSnapshot, pngDir: String?, name: String = "snapshot") -> (card: CGFloat, fitting: CGFloat) {
         let host = NSHostingView(rootView: ProviderTooltip(snapshot: s, now: Date(), resetTimeFormat: .automatic, showUsagePace: false)
             .frame(width: NotchLayout.cardWidth - 2 * NotchLayout.cardPadding)
             .environment(\.colorScheme, .dark))
@@ -143,7 +172,7 @@ enum BDBPopoverFit {
                 .environment(\.codenotchHeadlessGlass, true))
             r.scale = 2
             if let tiff = r.nsImage?.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
-                try? png.write(to: URL(fileURLWithPath: pngDir).appendingPathComponent("codenotch-1.20.1-popover-\(n)rows.png"))
+                try? png.write(to: URL(fileURLWithPath: pngDir).appendingPathComponent("codenotch-1.20.1-popover-\(name).png"))
             }
         }
         return (cardHeight(s), fitting)

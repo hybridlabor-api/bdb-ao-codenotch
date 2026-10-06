@@ -27,8 +27,6 @@ struct BDBVersionRow: Identifiable, Equatable {
     let installed: String?
     let latest: String?
     var checked: Date? = nil
-    /// Line 2 when there is no release feed to compare against.
-    var fallbackNote = "not checked yet"
     var id: String { title }
     var updateAvailable: Bool {
         guard let installed, let latest else { return false }
@@ -36,7 +34,7 @@ struct BDBVersionRow: Identifiable, Equatable {
     }
     var detail: String { installed ?? "not installed" }
     func note(now: Date) -> (text: String, accent: Bool)? {
-        BDBVersionLogic.note(installed: installed, latest: latest, checked: checked, now: now, fallback: fallbackNote)
+        BDBVersionLogic.note(installed: installed, latest: latest, checked: checked, now: now)
     }
 }
 

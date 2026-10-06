@@ -41,12 +41,11 @@ enum BDBVersionLogic {
     }
 
     /// Second line of a version row and whether it takes the accent colour.
-    static func note(installed: String?, latest: String?, checked: Date?, now: Date,
-                     fallback: String = "not checked yet") -> (text: String, accent: Bool)? {
+    static func note(installed: String?, latest: String?, checked: Date?, now: Date) -> (text: String, accent: Bool)? {
         guard let installed else { return nil }
         if let latest, isNewer(latest, than: installed) { return ("update available: \(latest)", true) }
         if latest != nil, let checked { return ("up to date \u{00B7} checked \(ElapsedCopy.ago(since: checked, now: now))", false) }
-        return (fallback, false)
+        return ("not checked yet", false)
     }
 }
 

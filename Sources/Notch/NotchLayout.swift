@@ -407,6 +407,7 @@ enum NotchLayout {
                            localLedgerRows: Int = 0,
                            compactRowCount: Int = 0,
                            noteRowCount: Int = 0,
+                           groupedWindowCount: Int = 0,
                            showsDeepSeekPricing: Bool = true,
                            costRows: Int = 0) -> CGFloat {
         let header = max(glyphSize, cardTitleLineHeight)
@@ -446,10 +447,13 @@ enum NotchLayout {
                 let groupExtra = cardBodyLineHeight + Design.px(12) + 2 * Design.px(16)
                 height += CGFloat(groupCount) * groupExtra
 
-                if groupCount > 1 {
-                    // We use 28px between groups instead of the default 20px (blockSpacing)
-                    height += CGFloat(groupCount - 1) * (Design.px(28) - blockSpacing)
-                }
+                // 28px before every group but a leading one, instead of blockSpacing.
+                let leadingUngrouped = windowCount > groupedWindowCount
+                let gaps = leadingUngrouped ? groupCount : groupCount - 1
+                height += CGFloat(gaps) * (Design.px(28) - blockSpacing)
+
+                // Rows inside a group are spaced twice (stack spacing + row padding).
+                height += CGFloat(max(0, groupedWindowCount - groupCount)) * blockSpacing
 
                 // Extra padding at the very bottom
                 height += Design.px(8)

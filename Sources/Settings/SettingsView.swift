@@ -84,7 +84,7 @@ private enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance:    return L10n.t("How the notch looks and where it sits.")
         case .notifications: return L10n.t("What Codenotch tells you, and when.")
         case .costs:         return L10n.t("What each project spent of each login's allowance.")
-        case .bdb:           return "Keep-awake for coding agents, AOS/AO versions."
+        case .bdb:           return "Keep-awake for coding agents, AOS version."
         case .general:       return L10n.t("Startup, updates and everything else.")
         }
     }

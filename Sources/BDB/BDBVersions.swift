@@ -40,19 +40,6 @@ enum BDBVersionLogic {
         return "\(root)/\(npmName)/package.json"
     }
 
-    /// Short SHA, plus "dev" for a dirty tree, from `go version -m <binary>` output.
-    static func buildInfo(fromGoVersion out: String) -> String? {
-        func value(_ key: String) -> String? {
-            for line in out.split(separator: "\n") {
-                let f = line.split(whereSeparator: { $0 == " " || $0 == "\t" }).map(String.init)
-                if f.count >= 2, f[0] == "build", f[1].hasPrefix(key + "=") { return String(f[1].dropFirst(key.count + 1)) }
-            }
-            return nil
-        }
-        guard let rev = value("vcs.revision"), !rev.isEmpty else { return nil }
-        return String(rev.prefix(7)) + (value("vcs.modified") == "true" ? " dev" : "")
-    }
-
     /// Second line of a version row and whether it takes the accent colour.
     static func note(installed: String?, latest: String?, checked: Date?, now: Date,
                      fallback: String = "not checked yet") -> (text: String, accent: Bool)? {

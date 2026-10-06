@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// `Codenotch --bdb-selftest`: plain asserts for the BDB decision logic.
 /// XCTest is not available with only the Command Line Tools.
@@ -74,10 +75,6 @@ enum BDBSelfTest {
         check(BDBVersionLogic.due(lastFetch: t0, now: t0.addingTimeInterval(600), every: BDBVersionLogic.cardOpenInterval), "card open: due after 10 min")
         check(BDBVersionLogic.packagePath(npmRoot: "/opt/homebrew/lib/node_modules\n", npmName: "@a/b") == "/opt/homebrew/lib/node_modules/@a/b/package.json", "npm root path")
         check(BDBVersionLogic.packagePath(npmRoot: "npm ERR!", npmName: "@a/b") == nil, "bad npm root falls back")
-        let goOut = "/x/ao: go1.26\n\tbuild\tvcs=git\n\tbuild\tvcs.revision=3b873af12d26ce06c9b54ed5ecf26cfa29c597e1\n\tbuild\tvcs.modified=true\n"
-        check(BDBVersionLogic.buildInfo(fromGoVersion: goOut) == "3b873af dev", "AO build info dirty")
-        check(BDBVersionLogic.buildInfo(fromGoVersion: goOut.replacingOccurrences(of: "true", with: "false")) == "3b873af", "AO build info clean")
-        check(BDBVersionLogic.buildInfo(fromGoVersion: "nothing") == nil, "AO build info missing")
         let n1 = BDBVersionLogic.note(installed: "4.12.1", latest: "4.16.0", checked: t0, now: t0)
         check(n1?.text == "update available: 4.16.0" && n1?.accent == true, "note: update in accent")
         let n2 = BDBVersionLogic.note(installed: "4.16.0", latest: "4.16.0", checked: t0, now: t0.addingTimeInterval(300))
@@ -99,7 +96,56 @@ enum BDBSelfTest {
         check(snap.noteRowCount == 1, "note row counted for card height")
         check(BDBSnapshot.make(BDBState()).headlineText == "0", "idle gauge shows 0")
 
+        // Hover card height vs. the real content, and PNGs when BDB_POPOVER_PNG_DIR is set.
+        for n in [1, 3, 4, 6] {
+            let m = MainActor.assumeIsolated { BDBPopoverFit.measure(rows: n, pngDir: ProcessInfo.processInfo.environment["BDB_POPOVER_PNG_DIR"]) }
+            print("     rows=\(n) cardHeight=\(m.card) fitting=\(m.fitting)")
+            check(m.card >= m.fitting - 0.5, "popover fits \(n) agent rows (no clipping)")
+            check(m.card <= m.fitting + 24, "popover has no excess slack at \(n) rows")
+        }
+
         print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
         return failures == 0 ? 0 : 1
+    }
+}
+
+/// Measures the BDB hover card: the height `NotchLayout.cardHeight` reserves
+/// against what SwiftUI says the content needs.
+@MainActor
+enum BDBPopoverFit {
+    static func snapshot(agentRows n: Int, update: Bool = true) -> ProviderSnapshot {
+        var s = BDBSnapshot.make(BDBState(mode: .auto, holding: true, statusLine: "Awake: 2 agents busy",
+            versions: [BDBVersionRow(title: "AOS", installed: "4.16.0", latest: update ? "4.18.1" : "4.16.0", checked: Date())]))
+        s.windows.removeAll { $0.group == "Agents" }
+        let at = s.windows.firstIndex { $0.group == "Versions" } ?? s.windows.endIndex
+        s.windows.insert(contentsOf: (0..<n).map {
+            LimitWindow(id: "agent-\($0)", group: "Agents", label: "Agent \($0 + 1)", detail: "7 running \u{00B7} 1 busy")
+        }, at: at)
+        return s
+    }
+
+    static func cardHeight(_ s: ProviderSnapshot) -> CGFloat {
+        NotchLayout.cardHeight(windowCount: s.windows.count, groupCount: s.windowGroupCount,
+                               compactRowCount: s.compactRowCount, noteRowCount: s.noteRowCount,
+                               groupedWindowCount: s.groupedWindowCount)
+    }
+
+    static func measure(rows n: Int, pngDir: String?) -> (card: CGFloat, fitting: CGFloat) {
+        let s = snapshot(agentRows: n)
+        let host = NSHostingView(rootView: ProviderTooltip(snapshot: s, now: Date(), resetTimeFormat: .automatic, showUsagePace: false)
+            .frame(width: NotchLayout.cardWidth - 2 * NotchLayout.cardPadding)
+            .environment(\.colorScheme, .dark))
+        let fitting = host.fittingSize.height + 2 * NotchLayout.cardPadding
+        if let pngDir {
+            let r = ImageRenderer(content: TooltipCard(snapshot: s, now: Date(), direction: .trailing)
+                .padding(20).background(Color.black)
+                .environment(\.colorScheme, .dark).environment(\.notchSurfaceStyle, .solid)
+                .environment(\.codenotchHeadlessGlass, true))
+            r.scale = 2
+            if let tiff = r.nsImage?.tiffRepresentation, let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) {
+                try? png.write(to: URL(fileURLWithPath: pngDir).appendingPathComponent("codenotch-1.20.1-popover-\(n)rows.png"))
+            }
+        }
+        return (cardHeight(s), fitting)
     }
 }

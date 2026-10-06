@@ -58,9 +58,10 @@ enum BDBSnapshot {
                 detail: "\(a.running) running · \(a.busy) busy"))
         }
         for v in s.versions {
-            let n = v.note(now: now)
+            // The card shows only the update hint; "up to date" and fallback notes stay in Settings.
+            let hint = v.note(now: now).flatMap { $0.accent ? $0.text : nil }
             windows.append(LimitWindow(id: "ver-\(v.title)", group: "Versions", label: v.title, detail: v.detail,
-                                       note: n?.text, noteAccent: n?.accent ?? false))
+                                       note: hint, noteAccent: hint != nil))
         }
 
         return ProviderSnapshot(
@@ -79,7 +80,7 @@ struct BDBProvider: UsageProvider {
     var displayName: String { Self.title }
     var glyph: ProviderGlyph { .bdb }
     var signInRoute: SignInRoute {
-        .guidance("Switch on to show keep-awake, running agents and AOS/AO versions in the notch.")
+        .guidance("Switch on to show keep-awake, running agents and AOS version in the notch.")
     }
 
     func fetchSnapshot() async throws -> ProviderSnapshot {

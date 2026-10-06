@@ -210,7 +210,6 @@ final class BDBHub: ObservableObject {
     // MARK: Versions
 
     private var npmRoot: String?
-    private var aoBuild: String?
     private var resolvedTools = false
     private var lastAttempt: Date?
 
@@ -218,21 +217,15 @@ final class BDBHub: ObservableObject {
         BDBVersionLogic.packagePath(npmRoot: npmRoot, npmName: BDBPackage.aos.npmName) ?? BDBPackage.aos.fallbackPath
     }
 
-    /// One-off at launch: where global npm packages live, and the AO binary's
-    /// build info. Never runs `aos` or `ao`.
+    /// One-off at launch: where global npm packages live. Never runs `aos`.
     private func resolveToolsOnce() {
         guard !resolvedTools else { return }
         resolvedTools = true
         DispatchQueue.global(qos: .utility).async { [weak self] in
             let npm = ["/opt/homebrew/bin/npm", "/usr/local/bin/npm"].first { FileManager.default.isExecutableFile(atPath: $0) }
             let root = npm.flatMap { Self.run($0, ["root", "-g"]) }
-            let go = ["/opt/homebrew/bin/go", "/usr/local/bin/go", "/usr/local/go/bin/go"].first { FileManager.default.isExecutableFile(atPath: $0) }
-            let ao = NSHomeDirectory() + "/.local/bin/ao"
-            let build = go.flatMap { g in FileManager.default.isExecutableFile(atPath: ao) ? Self.run(g, ["version", "-m", ao]) : nil }
-                .flatMap(BDBVersionLogic.buildInfo(fromGoVersion:))
             DispatchQueue.main.async {
                 self?.npmRoot = root
-                self?.aoBuild = build
                 self?.rebuildRows()
             }
         }
@@ -255,12 +248,9 @@ final class BDBHub: ObservableObject {
     /// Reads one small file; only called at launch, on fetch and on card open, never per tick.
     private func rebuildRows() {
         let installed = FileManager.default.contents(atPath: aosPath).flatMap(BDBVersionLogic.version(fromJSON:))
-        var rows = [BDBVersionRow(title: "AOS", installed: installed,
+        let rows = [BDBVersionRow(title: "AOS", installed: installed,
                                   latest: defaults.string(forKey: Key.latest + BDBPackage.aos.npmName),
                                   checked: defaults.object(forKey: Key.fetched) as? Date)]
-        if let aoBuild {
-            rows.append(BDBVersionRow(title: "AO", installed: aoBuild, latest: nil, fallbackNote: "local build, no release feed"))
-        }
         guard rows != versionRows else { return }
         versionRows = rows
         notify()

@@ -1255,6 +1255,7 @@ final class NotchWindowController {
             showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount, noteRowCount: snapshot.noteRowCount,
+            groupedWindowCount: snapshot.groupedWindowCount,
             showsDeepSeekPricing: model.deepSeekPricingEnabled
         )
         // Across the stack the region is the card, its tail, and the gap the

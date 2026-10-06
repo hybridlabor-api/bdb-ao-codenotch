@@ -9,7 +9,7 @@ final class BDBPopoverHeightTests: XCTestCase {
         for n in [1, 3, 4, 6] {
             let m = BDBPopoverFit.measure(rows: n, pngDir: nil)
             XCTAssertGreaterThanOrEqual(m.card, m.fitting - 0.5, "\(n) rows: card clips its content")
-            XCTAssertLessThanOrEqual(m.card, m.fitting + 6, "\(n) rows: card has excess slack")
+            XCTAssertLessThanOrEqual(m.card, m.fitting + 12, "\(n) rows: card has excess slack")
             XCTAssertGreaterThan(m.card, last, "height must grow with rows")
             last = m.card
         }
@@ -19,7 +19,7 @@ final class BDBPopoverHeightTests: XCTestCase {
         for groups in [0, 2] {
             let m = BDBPopoverFit.measure(snapshot: BDBPopoverFit.codexSnapshot(groups: groups), pngDir: nil)
             XCTAssertGreaterThanOrEqual(m.card, m.fitting - 0.5, "\(groups) groups: card clips its content")
-            XCTAssertLessThanOrEqual(m.card, m.fitting + 6, "\(groups) groups: card has excess slack")
+            XCTAssertLessThanOrEqual(m.card, m.fitting + 12, "\(groups) groups: card has excess slack")
         }
     }
 

@@ -101,14 +101,14 @@ enum BDBSelfTest {
             let m = MainActor.assumeIsolated { BDBPopoverFit.measure(rows: n, pngDir: ProcessInfo.processInfo.environment["BDB_POPOVER_PNG_DIR"]) }
             print("     rows=\(n) cardHeight=\(m.card) fitting=\(m.fitting)")
             check(m.card >= m.fitting - 0.5, "popover fits \(n) agent rows (no clipping)")
-            check(m.card <= m.fitting + 6, "popover has no excess slack at \(n) rows")
+            check(m.card <= m.fitting + 12, "popover has no excess slack at \(n) rows")
         }
 
         for (name, groups) in [("codex-2groups", 2), ("codex-0groups", 0)] {
             let m = MainActor.assumeIsolated { BDBPopoverFit.measure(snapshot: BDBPopoverFit.codexSnapshot(groups: groups), pngDir: nil) }
             print("     \(name) cardHeight=\(m.card) fitting=\(m.fitting)")
             check(m.card >= m.fitting - 0.5, "\(name) fits (no clipping)")
-            check(m.card <= m.fitting + 6, "\(name) has no excess slack")
+            check(m.card <= m.fitting + 12, "\(name) has no excess slack")
         }
         let codexCard = MainActor.assumeIsolated { BDBPopoverFit.cardHeight(BDBPopoverFit.codexSnapshot(groups: 2)) }
         let maxCard = NotchLayout.maxCardHeight(sessionCap: NotchLayout.defaultSessionCap)

@@ -32,6 +32,16 @@ enum ReleaseNotes {
     static var all: [ReleaseNote] {
         [
             ReleaseNote(
+                version: "1.20.1",
+                headline: L10n.t("The BDB AOS usage card shows everything again."),
+                changes: [
+                    ReleaseNote.Change(
+                        title: L10n.t("No more cut-off card"),
+                        detail: L10n.t("The BDB AOS usage card now grows with its agent list instead of cutting off the bottom rows. The AO row is gone and the version line shows only the AOS update hint; Settings still has the full details.")
+                    )
+                ]
+            ),
+            ReleaseNote(
                 version: "1.20.0",
                 headline: L10n.t("See what each project spent of your allowance, and figures that keep up while you work."),
                 changes: [

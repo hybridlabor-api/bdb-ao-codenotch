@@ -1297,6 +1297,7 @@ final class NotchViewModel: ObservableObject {
                 showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
                 compactRowCount: snapshot.compactRowCount, noteRowCount: snapshot.noteRowCount,
+                groupedWindowCount: snapshot.groupedWindowCount,
                 showsDeepSeekPricing: deepSeekPricingEnabled,
                 costRows: costRows(for: snapshot))
         }.max() ?? 0

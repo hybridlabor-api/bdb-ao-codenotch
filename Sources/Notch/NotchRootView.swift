@@ -595,6 +595,7 @@ struct NotchRootView: View {
             showsLocalPerformance: snapshot.showsLocalPerformance,
             localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount, noteRowCount: snapshot.noteRowCount,
+            groupedWindowCount: snapshot.groupedWindowCount,
             showsDeepSeekPricing: model.deepSeekPricingEnabled,
             costRows: model.costRows(for: snapshot))
     }

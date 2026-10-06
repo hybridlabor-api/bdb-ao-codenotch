@@ -581,7 +581,7 @@ private struct MoneyStat: View {
     }
 }
 
-private struct ProviderTooltip: View {
+struct ProviderTooltip: View {
     /// What a local model is doing right now, for the header's note.
     var activityNote: String?
     let snapshot: ProviderSnapshot
@@ -1138,6 +1138,7 @@ struct TooltipCard: View {
             showsLocalPerformance: snapshot.showsLocalPerformance,
                 localLedgerRows: snapshot.localLedgerRowCount,
             compactRowCount: snapshot.compactRowCount, noteRowCount: snapshot.noteRowCount,
+            groupedWindowCount: snapshot.groupedWindowCount,
             showsDeepSeekPricing: deepSeekPricingEnabled,
             costRows: costRows
         )

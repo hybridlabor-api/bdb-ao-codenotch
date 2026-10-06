@@ -460,6 +460,7 @@ struct ProviderSnapshot: Identifiable, Equatable {
 
     /// Group headings occupy space in both the card and its hover region.
     var windowGroupCount: Int { Set(windows.compactMap(\.group)).count }
+    var groupedWindowCount: Int { windows.filter { $0.group != nil }.count }
 
     /// How many windows are count-only (no fraction, no bar) — they render as
     /// single-line rows and take less vertical space than full bar rows.
